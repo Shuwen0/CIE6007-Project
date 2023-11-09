@@ -1,0 +1,197 @@
+import torch
+from torch.utils.data import DataLoader
+import torch.optim as optim
+import torch.nn as nn
+
+import argparse
+
+# files of my implementation
+from REFIT_Dataset import REFIT_Dataset
+from seq2point import Seq2point
+from transformer import TransformerSeq2Seq, TransformerSeq2Point
+from attention_cnn import attention_cnn_Pytorch
+from dataset_infos import params_appliance
+from model_infos import params_model
+from Focal_Loss import binary_focal_loss_with_logits
+
+'''
+This file loads an arbitrary model and train
+-- input x: [batch_size, window_size, 1]
+-- output y: [batch_size, window_size, 1] (seq2seq) or [batch_size, 1] (seq2point)
+'''
+
+# Hyperparameters (default)
+model = 'attention_cnn_Pytorch' # ['s2p', 'TransformerSeq2seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch]
+batch_size = params_model[model]['batch_size'] # [1000, 128]
+learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
+num_epochs = params_model[model]['num_epochs'] # [10, 100]
+printfreq = params_model[model]['printfreq'] # [100, 100]
+window_size = params_model[model]['window_size'] # [599, 480] 
+crop = params_model[model]['crop'] # [None, None]
+header = params_model[model]['header'] # [0, 0]
+optimizer_name = params_model[model]['optimizer'] # ['Adam', 'Adam']
+criterion_name = params_model[model]['criterion'] # ["BCEWithLogitsLoss", 'BCEWithLogitsLoss']  
+
+# Only for s2p
+if model == 's2p' or model == 'attention_cnn_Pytorch':
+    offset = window_size // 2
+    n_dense = params_model[model]['n_dense']
+    transfer_cnn = params_model[model]['transfer_cnn']
+
+# Only for TransformerSeq2seq
+if model == 'TransformerSeq2Seq':
+    d_model = params_model[model]['d_model']
+    n_head = params_model[model]['n_head']
+    num_encoder_layers = params_model[model]['num_encoder_layers']
+    offset = None # NA, won't be used for dataset creation
+
+if model == 'TransformerSeq2Point':
+    d_model = params_model[model]['d_model']
+    n_head = params_model[model]['n_head']
+    num_encoder_layers = params_model[model]['num_encoder_layers']
+    offset = window_size // 2
+
+
+use_focal_loss = False
+alpha = 2
+
+def remove_space(string):
+    return string.replace(" ","")
+
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+    
+
+def get_arguments():
+    parser = argparse.ArgumentParser(description='Train a neural network\
+                                     for energy disaggregation - \
+                                     network input = mains window; \
+                                     network target = the states of \
+                                     the target appliance.')
+    parser.add_argument('--task',
+                        type=str,
+                        default='Classification',
+                        help='Task to train: classification or regression')
+    parser.add_argument('--appliance_name',
+                        type=remove_space,
+                        default='kettle',
+                        help='the name of target appliance')
+    parser.add_argument('--datadir',
+                        type=str,
+                        default='../kettle/Classification/kettle_training_.csv',
+                        help='this is the directory of the training samples')
+    parser.add_argument('--pretrainedmodel_dir',
+                        type=str,
+                        default=None,
+                        help='this is the directory of the pre-trained models')
+    parser.add_argument('--save_dir',
+                        type=str,
+                        default='models/',
+                        help='this is the directory to save the trained models')
+    parser.add_argument('--save_model',
+                        type=int,
+                        default=-1,
+                        help='Save the learnt model:\
+                        0 -- not to save the learnt model parameters;\
+                        n (n>0) -- to save the model params every n steps;\
+                        -1 -- only save the learnt model params\
+                        at the end of training.')
+    parser.add_argument('--gpu',
+                        type=int,
+                        default=1,
+                        help='Number of GPUs to use:\
+                            n -- number of GPUs the system should use;\
+                            -1 -- do not use any GPU.')
+    return parser.parse_args()
+
+args = get_arguments()
+
+# given hyperparameters
+appliance_name = args.appliance_name
+task = args.task
+data_dir = '../' + appliance_name + '/' + task + '/' + appliance_name + '_training_.csv'
+gpu = args.gpu
+num_appliances = 1
+
+
+# Device configuration
+if gpu == -1:
+    device = 'cpu'
+else:
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Dataset and DataLoader
+train_dataset = REFIT_Dataset(filename=data_dir, offset=offset, window_size=window_size, crop=crop, mode=model)
+print("The size of total training dataset is: ", len(train_dataset))
+train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+
+# Model: input [batch_size, window_size, 1] -> output [batch_size, num_appliances]
+if model == 's2p':
+    NILMmodel = Seq2point(window_length=window_size, n_dense=n_dense, num_appliances=num_appliances, transfer_cnn=transfer_cnn, cnn_weights=None).to(device)
+elif model == 'TransformerSeq2Seq':
+    NILMmodel = TransformerSeq2Seq(window_size=window_size, d_model=d_model, nhead=n_head, num_encoder_layers=num_encoder_layers).to(device)
+elif model == 'TransformerSeq2Point':
+    NILMmodel = TransformerSeq2Point(window_size=window_size, d_model=d_model, nhead=n_head, num_encoder_layers=num_encoder_layers).to(device)
+elif model == 'attention_cnn_Pytorch':
+    NILMmodel = attention_cnn_Pytorch(window_size=window_size)
+
+# Loss and optimizer
+if criterion_name == 'BCEWithLogitsLoss':
+    criterion = nn.BCEWithLogitsLoss() # expect a single scalar output
+elif criterion_name == 'BCELoss':
+    criterion = nn.BCELoss() # expect multi-channel, needs softmax
+
+
+if use_focal_loss and model == 's2p':
+    aux_criterion_scaler = binary_focal_loss_with_logits # expect a single scalar output
+
+optimizer = optim.Adam(NILMmodel.parameters(), lr=learning_rate)
+
+# Train the model
+def train():
+    NILMmodel.train()
+    for epoch in range(num_epochs):
+        epoch_loss = 0
+        num_points = 0
+
+        for i, (inputs, targets) in enumerate(train_loader):
+
+            num_points += inputs.shape[0]
+
+            # debugging
+            print("Training sample ", i)
+            print(inputs.shape, targets.shape)
+
+            # Move tensors to the configured device
+            inputs = inputs.to(device)
+
+            # [batch_size, 1] for seq2point
+            # [batch_size, window_size] for seq2seq
+            targets = targets.to(device) 
+
+            # Forward pass
+            outputs = NILMmodel(inputs)
+            loss = criterion(outputs.type(torch.DoubleTensor), targets.type(torch.DoubleTensor).to(device))
+            epoch_loss += loss
+
+            if use_focal_loss:
+                aux_loss = aux_criterion_scaler(outputs, targets) * alpha
+                loss += aux_loss
+
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if (i+1) % printfreq == 0:
+                print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f} (Average: {epoch_loss.item()/num_points})')
+                # Save the model parameters.
+                # torch.save(NILMmodel.state_dict(), 'models/s2p_model_REFIT_'+appliance_name+'.pth')
+
+if __name__ == '__main__':
+    train()
