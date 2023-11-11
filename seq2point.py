@@ -82,6 +82,7 @@ class Seq2point(nn.Module):
         for dense in self.dense_layers:
             x = F.relu(dense(x))
         x = self.output(x)
+        
         return x
     
     def weights_initialization(self):

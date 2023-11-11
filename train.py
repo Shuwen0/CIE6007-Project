@@ -85,6 +85,10 @@ def get_arguments():
                         type=str,
                         default='../REFIT/kettle/classification/kettle_training_.csv',
                         help='this is the directory of the training samples')
+    parser.add_argument('--dataset_name',
+                        type=str,
+                        default='REFIT',
+                        help='this is the directory of the training samples')
     parser.add_argument('--pretrainedmodel_dir',
                         type=str,
                         default=None,
@@ -113,6 +117,7 @@ args = get_arguments()
 
 # given hyperparameters
 appliance_name = args.appliance_name
+dataset_name = args.dataset_name
 task = args.task
 data_dir = '../REFIT/' + appliance_name + '/' + task + '/' + appliance_name + '_training_.csv'
 gpu = args.gpu
@@ -141,9 +146,9 @@ elif model == 'attention_cnn_Pytorch':
     NILMmodel = attention_cnn_Pytorch(window_size=window_size)
 
 # Loss and optimizer
-if criterion_name == 'BCEWithLogitsLoss':
+if criterion_name == 'BCEWithLogitsLoss': # apply sigmoid
     criterion = nn.BCEWithLogitsLoss() # expect a single scalar output
-elif criterion_name == 'BCELoss':
+elif criterion_name == 'BCELoss': # no sigmoid, needs toe be done manually
     criterion = nn.BCELoss() # expect multi-channel, needs softmax
 
 
@@ -191,7 +196,8 @@ def train():
             if (i+1) % printfreq == 0:
                 print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f} (Average: {epoch_loss.item()/num_points})')
                 # Save the model parameters.
-                torch.save(NILMmodel.state_dict(), 'models/s2p_model_REFIT_'+appliance_name+'.pth')
+                save_path = os.path.join('..', 'models', 'MyCodes', dataset_name+'_'+appliance_name+'_'+model+'.pth')
+                torch.save(NILMmodel.state_dict(), save_path)
 
 if __name__ == '__main__':
     train()
