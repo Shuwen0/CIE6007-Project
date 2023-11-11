@@ -119,7 +119,7 @@ args = get_arguments()
 # given hyperparameters
 appliance_name = args.appliance_name
 task = args.task
-data_dir = '../' + appliance_name + '/' + task + '/' + appliance_name + '_test_H2.csv' # 最后要改！
+data_dir = '../' + appliance_name + '/' + task + '/' + appliance_name + '_test_H2.csv' # 最后要改！!!!!!!!!!!!!!!!!!!!!!!!!!
 gpu = args.gpu
 num_appliances = 1
 save_dir = args.save_dir
@@ -204,9 +204,16 @@ def test():
             if use_focal_loss:
                 aux_loss = aux_criterion_scaler(outputs, targets) * alpha
                 total_loss += aux_loss
+            
+            # Calculate TP, TN, FP, FN
+            if criterion_name == 'BCEWithLogitsLoss':
+                # Apply the sigmoid function using torch.sigmoid
+                probabilities = torch.sigmoid(outputs)
+                # Generate class predictions
+                predictions = (probabilities >= 0.5).int()
 
             # Calculate TP, TN, FP, FN
-            np_outputs, np_targets = outputs.detach().cpu().numpy(), targets.detach().cpu().numpy()
+            np_outputs, np_targets = predictions.detach().cpu().numpy(), targets.detach().cpu().numpy()
             TP += np.sum((np_outputs == 1) & (np_targets == 1))
             TN += np.sum((np_outputs == 0) & (np_targets == 0))
             FP += np.sum((np_outputs == 1) & (np_targets == 0))
@@ -216,6 +223,8 @@ def test():
     recall = TP / (TP + FN) if (TP + FN) > 0 else 0
     f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
     accuracy = (TP + TN) / (TP + TN + FP + FN)
+
+    print('TP %d : TN %d : FP %d : FN %d' %(TP, TN, FP, FN))
 
     print(f'Precision: {precision}')
     print(f'Recall: {recall}')
