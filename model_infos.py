@@ -17,7 +17,7 @@ params_model = {
     'TransformerSeq2Seq': {
         'window_size': 21, # doesn'thave to be odd
         'num_appliances': 1,
-        'crop': 480, # default is None, use one batch to try to overfit the model for debugging
+        'crop': None, # default is None, use one batch to try to overfit the model for debugging
         'header':0,
         'batch_size': 32,
         'lr': 1e-3,
@@ -32,7 +32,7 @@ params_model = {
     'TransformerSeq2Point': {
         'window_size': 21, # needs to be odd
         'num_appliances': 1,
-        'crop': 1000, # default is None, could use small subset to try to overfit the model for debugging
+        'crop': None, # default is None, could use small subset to try to overfit the model for debugging
         'header':0,
         'batch_size': 32,
         'lr': 1e-3,
@@ -46,7 +46,7 @@ params_model = {
     },
     'attention_cnn_Pytorch':{
         'window_size': 599, # needs to be odd
-        'crop':1000, # default is None, could use small subset to try to overfit the model for debugging
+        'crop':None, # default is None, could use small subset to try to overfit the model for debugging
         'header':0,
         'num_appliances': 1,
         'batch_size': 1000,

@@ -2,6 +2,9 @@ import torch
 from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.nn as nn
+import os
+import psutil
+
 
 import argparse
 
@@ -129,10 +132,11 @@ if gpu == -1:
     device = 'cpu'
 else:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print("Training on ", device, flush=True)
 
 # Dataset and DataLoader
 train_dataset = REFIT_Dataset(filename=data_dir, offset=offset, window_size=window_size, crop=crop, mode=model)
-print("The size of total training dataset is: ", len(train_dataset))
+print("The size of total training dataset is: ", len(train_dataset), flush=True)
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 
 # Model: input [batch_size, window_size, 1] -> output [batch_size, num_appliances]
@@ -158,15 +162,13 @@ if use_focal_loss and model == 's2p':
 optimizer = optim.Adam(NILMmodel.parameters(), lr=learning_rate)
 
 # Train the model
+memory_flag = 0
 def train():
     NILMmodel.train()
     for epoch in range(num_epochs):
         epoch_loss = 0
-        num_points = 0
-
+        epoch_idx = 0
         for i, (inputs, targets) in enumerate(train_loader):
-
-            num_points += inputs.shape[0]
 
             # debugging
             # print("Training sample ", i)
@@ -177,12 +179,13 @@ def train():
 
             # [batch_size, 1] for seq2point
             # [batch_size, window_size] for seq2seq
-            targets = targets.to(device) 
+            # targets = targets.to(device) 
 
             # Forward pass
             outputs = NILMmodel(inputs)
-            loss = criterion(outputs.type(torch.DoubleTensor), targets.type(torch.DoubleTensor).to(device))
+            loss = criterion(outputs.type(torch.DoubleTensor).to(device), targets.type(torch.DoubleTensor).to(device))
             epoch_loss += loss
+            epoch_idx += 1
 
             if use_focal_loss:
                 aux_loss = aux_criterion_scaler(outputs, targets) * alpha
@@ -194,10 +197,26 @@ def train():
             optimizer.step()
 
             if (i+1) % printfreq == 0:
-                print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f} (Average: {epoch_loss.item()/num_points})')
+                print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f} (Average: {epoch_loss.item()/epoch_idx})', flush=True)
                 # Save the model parameters.
-                save_path = os.path.join('..', 'models', 'MyCodes', dataset_name+'_'+appliance_name+'_'+model+'.pth')
+                save_path = os.path.join('models', dataset_name+'_'+appliance_name+'_'+model+'.pth')
                 torch.save(NILMmodel.state_dict(), save_path)
 
+                # Check GPU memory usage
+                memory_allocated = torch.cuda.memory_allocated(device)
+                print(f"Epoch {epoch+1}: GPU memory allocated: {memory_allocated / (1024 ** 2):.2f} MB", flush=True)
+
+                # Monitor CPU usage
+                cpu_percent = psutil.cpu_percent(interval=1)  # Monitor CPU usage over 1 second
+                print(f"Epoch {epoch + 1}: CPU Usage: {cpu_percent}%", flush=True)
+
+                # Monitor memory usage
+                memory_info = psutil.virtual_memory()
+                print(f"Epoch {epoch + 1}: Memory Usage: {memory_info.percent}%", flush=True)
+        
+            
+
+
 if __name__ == '__main__':
+    print("This is the result of train.py!!", flush=True)
     train()
