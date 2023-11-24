@@ -68,7 +68,12 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
-    
+
+params_dataset = {
+    'REFIT':{
+        4:{'kettle':9, 'microwave':8, 'fridge':1, 'dishwasher':4, 'washingmachine':6},
+    }
+}
 
 def get_arguments():
     parser = argparse.ArgumentParser(description='Train a neural network\
@@ -78,7 +83,7 @@ def get_arguments():
                                      the target appliance.')
     parser.add_argument('--task',
                         type=str,
-                        default='classification',
+                        default='regression',
                         help='Task to train: classification or regression')
     parser.add_argument('--appliance_name',
                         type=remove_space,
@@ -86,12 +91,16 @@ def get_arguments():
                         help='the name of target appliance')
     parser.add_argument('--datadir',
                         type=str,
-                        default='../REFIT/kettle/classification/kettle_training_.csv',
+                        default='../REFIT/New_Data/',
                         help='this is the directory of the training samples')
-    parser.add_argument('--dataset_name',
+    parser.add_argument('--dataset',
                         type=str,
                         default='REFIT',
                         help='this is the directory of the training samples')
+    parser.add_argument('--building',
+                        type=int,
+                        default=4,
+                        help='this is the index of the building')
     parser.add_argument('--pretrainedmodel_dir',
                         type=str,
                         default=None,
@@ -120,9 +129,11 @@ args = get_arguments()
 
 # given hyperparameters
 appliance_name = args.appliance_name
-dataset_name = args.dataset_name
+dataset_name = args.dataset
+building = args.building
+appliance_channel = params_dataset[dataset_name][building][appliance_name]
 task = args.task
-data_dir = '../REFIT/' + appliance_name + '/' + task + '/' + appliance_name + '_training_.csv'
+data_dir = os.path.join('..', dataset_name, 'New_Data') # NOW: '../REFIT/New_Data/'
 gpu = args.gpu
 num_appliances = 1
 
@@ -134,8 +145,18 @@ else:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Training on ", device, flush=True)
 
-# Dataset and DataLoader
-train_dataset = REFIT_Dataset(filename=data_dir, offset=offset, window_size=window_size, crop=crop, mode=model)
+# Dataset and DataLoader 
+# ======================================================== 'CLEAN_House' is based on REFIT dataset ===============
+train_dataset = train_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+                          offset=299, 
+                          window_size=599, 
+                          crop=None, 
+                          header=0, 
+                          mode=model, 
+                          flag='train', 
+                          scale=True, 
+                          percent=100, 
+                          target_channel=appliance_channel)
 print("The size of total training dataset is: ", len(train_dataset), flush=True)
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 
@@ -150,14 +171,7 @@ elif model == 'attention_cnn_Pytorch':
     NILMmodel = attention_cnn_Pytorch(window_size=window_size)
 
 # Loss and optimizer
-if criterion_name == 'BCEWithLogitsLoss': # apply sigmoid
-    criterion = nn.BCEWithLogitsLoss() # expect a single scalar output
-elif criterion_name == 'BCELoss': # no sigmoid, needs toe be done manually
-    criterion = nn.BCELoss() # expect multi-channel, needs softmax
-
-
-if use_focal_loss and model == 's2p':
-    aux_criterion_scaler = binary_focal_loss_with_logits # expect a single scalar output
+criterion = torch.nn.MSELoss()
 
 optimizer = optim.Adam(NILMmodel.parameters(), lr=learning_rate)
 
@@ -187,10 +201,6 @@ def train():
             epoch_loss += loss
             epoch_idx += 1
 
-            if use_focal_loss:
-                aux_loss = aux_criterion_scaler(outputs, targets) * alpha
-                loss += aux_loss
-
             # Backward and optimize
             optimizer.zero_grad()
             loss.backward()
@@ -199,7 +209,7 @@ def train():
             if (i+1) % printfreq == 0:
                 print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f} (Average: {epoch_loss.item()/epoch_idx})', flush=True)
                 # Save the model parameters.
-                save_path = os.path.join('models', dataset_name+'_'+appliance_name+'_'+model+'.pth')
+                save_path = os.path.join('models', dataset_name+'_'+str(building)+'_'+appliance_name+'_'+model+'.pth')
                 torch.save(NILMmodel.state_dict(), save_path)
 
                 # Check GPU memory usage
@@ -213,6 +223,8 @@ def train():
                 # Monitor memory usage
                 memory_info = psutil.virtual_memory()
                 print(f"Epoch {epoch + 1}: Memory Usage: {memory_info.percent}%", flush=True)
+
+
         
             
 
