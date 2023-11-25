@@ -61,7 +61,7 @@ class Seq2point(nn.Module):
         7. dense layers: output 1024, ReLU
         ......
 
-        output: linear layer: output 1, Linear
+        output: linear layer: output 1, Linear 
         '''
 
 

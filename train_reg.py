@@ -16,6 +16,7 @@ from attention_cnn import attention_cnn_Pytorch
 from dataset_infos import params_appliance
 from model_infos import params_model
 from Focal_Loss import binary_focal_loss_with_logits
+from utils.early_stopping import EarlyStopping
 
 '''
 This file loads an arbitrary model and train
@@ -68,10 +69,14 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+    
+
 
 params_dataset = {
     'REFIT':{
-        4:{'kettle':9, 'microwave':8, 'fridge':1, 'dishwasher':4, 'washingmachine':6},
+        2:{'kettle':8, 'microwave':5, 'fridge':1, 'dishwasher':10, 'washingmachine':2},
+        3:{'kettle':9, 'microwave':8, 'fridge':2, 'dishwasher':10, 'washingmachine':6},
+        5:{'kettle':8, 'microwave':7, 'fridge':1, 'dishwasher':4, 'washingmachine':3}
     }
 }
 
@@ -147,7 +152,7 @@ print("Training on ", device, flush=True)
 
 # Dataset and DataLoader 
 # ======================================================== 'CLEAN_House' is based on REFIT dataset ===============
-train_dataset = train_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+train_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
                           offset=299, 
                           window_size=599, 
                           crop=None, 
@@ -157,8 +162,20 @@ train_dataset = train_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'C
                           scale=True, 
                           percent=100, 
                           target_channel=appliance_channel)
+val_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+                          offset=299, 
+                          window_size=599, 
+                          crop=None, 
+                          header=0, 
+                          mode=model, 
+                          flag='val', 
+                          scale=True, 
+                          percent=100, 
+                          target_channel=appliance_channel)
 print("The size of total training dataset is: ", len(train_dataset), flush=True)
+print("The size of validation dataset is: ", len(val_dataset))
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size, shuffle=False)
 
 # Model: input [batch_size, window_size, 1] -> output [batch_size, num_appliances]
 if model == 's2p':
@@ -174,6 +191,12 @@ elif model == 'attention_cnn_Pytorch':
 criterion = torch.nn.MSELoss()
 
 optimizer = optim.Adam(NILMmodel.parameters(), lr=learning_rate)
+
+# Save the model parameters.
+save_path = os.path.join('models', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.pth')
+
+# Initialize the early stopping object
+early_stopping = EarlyStopping(patience=3, verbose=True, path=save_path)
 
 # Train the model
 memory_flag = 0
@@ -208,21 +231,46 @@ def train():
 
             if (i+1) % printfreq == 0:
                 print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f} (Average: {epoch_loss.item()/epoch_idx})', flush=True)
-                # Save the model parameters.
-                save_path = os.path.join('models', dataset_name+'_'+str(building)+'_'+appliance_name+'_'+model+'.pth')
-                torch.save(NILMmodel.state_dict(), save_path)
+                # torch.save(NILMmodel.state_dict(), save_path)
 
-                # Check GPU memory usage
-                memory_allocated = torch.cuda.memory_allocated(device)
-                print(f"Epoch {epoch+1}: GPU memory allocated: {memory_allocated / (1024 ** 2):.2f} MB", flush=True)
+                # # Check GPU memory usage
+                # memory_allocated = torch.cuda.memory_allocated(device)
+                # print(f"Epoch {epoch+1}: GPU memory allocated: {memory_allocated / (1024 ** 2):.2f} MB", flush=True)
 
-                # Monitor CPU usage
-                cpu_percent = psutil.cpu_percent(interval=1)  # Monitor CPU usage over 1 second
-                print(f"Epoch {epoch + 1}: CPU Usage: {cpu_percent}%", flush=True)
+                # # Monitor CPU usage
+                # cpu_percent = psutil.cpu_percent(interval=1)  # Monitor CPU usage over 1 second
+                # print(f"Epoch {epoch + 1}: CPU Usage: {cpu_percent}%", flush=True)
 
-                # Monitor memory usage
-                memory_info = psutil.virtual_memory()
-                print(f"Epoch {epoch + 1}: Memory Usage: {memory_info.percent}%", flush=True)
+                # # Monitor memory usage
+                # memory_info = psutil.virtual_memory()
+                # print(f"Epoch {epoch + 1}: Memory Usage: {memory_info.percent}%", flush=True)
+            
+        # Switch model to evaluation mode
+        NILMmodel.eval()
+
+        # Validation
+        with torch.no_grad():
+            val_loss = 0.0
+            for inputs, targets in val_loader:
+                inputs = inputs.to(device)
+                targets = targets.to(device)
+                outputs = NILMmodel(inputs)
+                loss = criterion(outputs.type(torch.DoubleTensor).to(device), targets.type(torch.DoubleTensor).to(device))
+                val_loss += loss.item()
+
+            val_loss /= len(val_loader)
+
+        print(f"Validation Loss after epoch {epoch + 1}: {val_loss}")
+
+        # Call the early stopping
+        early_stopping(val_loss, NILMmodel)
+
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
+
+        # Switch back to training mode
+        NILMmodel.train()
 
 
         
