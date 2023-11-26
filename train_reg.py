@@ -25,7 +25,7 @@ This file loads an arbitrary model and train
 '''
 
 # Hyperparameters (default)
-model = 's2p' # ['s2p', 'TransformerSeq2seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch]
+model = 'TransformerSeq2Seq' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch]
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
@@ -153,8 +153,8 @@ print("Training on ", device, flush=True)
 # Dataset and DataLoader 
 # ======================================================== 'CLEAN_House' is based on REFIT dataset ===============
 train_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
-                          offset=299, 
-                          window_size=599, 
+                          offset=offset, 
+                          window_size=window_size, 
                           crop=None, 
                           header=0, 
                           mode=model, 
@@ -163,8 +163,8 @@ train_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + st
                           percent=100, 
                           target_channel=appliance_channel)
 val_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
-                          offset=299, 
-                          window_size=599, 
+                          offset=offset, 
+                          window_size=window_size, 
                           crop=None, 
                           header=0, 
                           mode=model, 

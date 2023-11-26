@@ -106,9 +106,13 @@ class REFIT_Dataset(Dataset):
             else:
                 data = self.df.values
                 # data = data * 1000
-
+        
+        if self.mode == 's2p' or self.mode == 'TransformerSeq2Point' or self.mode == 'attention_cnn_Pytorch':
             self.data_x = data[self.border1:self.border2, 0] # aggregate power
             self.data_y = data[self.border1:self.border2, self.target_channel] # appliance power
+        else:
+            self.data_x = data[self.border1:self.border2 + self.window_size - 1, 0]
+            self.data_y = data[self.border1:self.border2 + self.window_size -  1, self.target_channel]
 
         # debug
         # print('df shape: ', self.df.shape)
