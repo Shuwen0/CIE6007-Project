@@ -55,9 +55,6 @@ if model == 'TransformerSeq2Point':
     offset = window_size // 2
 
 
-use_focal_loss = False
-alpha = 2
-
 def remove_space(string):
     return string.replace(" ","")
 

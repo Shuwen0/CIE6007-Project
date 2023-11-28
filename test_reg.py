@@ -2,11 +2,10 @@ import torch
 from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.nn as nn
-import os
-import psutil
-
 
 import argparse
+import os
+import numpy as np
 
 # files of my implementation
 from REFIT_Dataset import REFIT_Dataset
@@ -17,14 +16,17 @@ from dataset_infos import params_appliance
 from model_infos import params_model
 from utils.early_stopping import EarlyStopping
 
+from train_reg import params_dataset
+
 '''
 This file loads an arbitrary model and train
 -- input x: [batch_size, window_size, 1]
 -- output y: [batch_size, window_size, 1] (seq2seq) or [batch_size, 1] (seq2point)
 '''
 
+# =========================================== model parameters ========================================
 # Hyperparameters (default)
-model = 'attention_cnn_Pytorch' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch']
+model = 's2p' # ['s2p', 'TransformerSeq2seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch]
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
@@ -55,9 +57,6 @@ if model == 'TransformerSeq2Point':
     offset = window_size // 2
 
 
-use_focal_loss = False
-alpha = 2
-
 def remove_space(string):
     return string.replace(" ","")
 
@@ -69,16 +68,7 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
     
-
-
-params_dataset = {
-    'REFIT':{
-        2:{'kettle':8, 'microwave':5, 'fridge':1, 'dishwasher':10, 'washingmachine':2},
-        3:{'kettle':9, 'microwave':8, 'fridge':2, 'dishwasher':10, 'washingmachine':6},
-        5:{'kettle':8, 'microwave':7, 'fridge':1, 'dishwasher':4, 'washingmachine':3}
-    }
-}
-
+# ======================================================== general setting ==============================================
 def get_arguments():
     parser = argparse.ArgumentParser(description='Train a neural network\
                                      for energy disaggregation - \
@@ -128,7 +118,6 @@ def get_arguments():
                             n -- number of GPUs the system should use;\
                             -1 -- do not use any GPU.')
     return parser.parse_args()
-
 args = get_arguments()
 
 # given hyperparameters
@@ -142,6 +131,8 @@ gpu = args.gpu
 num_appliances = 1
 
 
+
+
 # Device configuration
 if gpu == -1:
     device = 'cpu'
@@ -149,32 +140,21 @@ else:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Training on ", device, flush=True)
 
+
 # Dataset and DataLoader 
 # ======================================================== 'CLEAN_House' is based on REFIT dataset ===============
-train_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+test_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
                           offset=offset, 
                           window_size=window_size, 
                           crop=None, 
                           header=0, 
                           mode=model, 
-                          flag='train', 
+                          flag='test', 
                           scale=True, 
                           percent=100, 
                           target_channel=appliance_channel)
-val_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
-                          offset=offset, 
-                          window_size=window_size, 
-                          crop=None, 
-                          header=0, 
-                          mode=model, 
-                          flag='val', 
-                          scale=True, 
-                          percent=100, 
-                          target_channel=appliance_channel)
-print("The size of total training dataset is: ", len(train_dataset), flush=True)
-print("The size of validation dataset is: ", len(val_dataset))
-train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
-val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size, shuffle=False)
+print("The size of total test dataset is: ", len(test_dataset), flush=True)
+test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
 
 # Model: input [batch_size, window_size, 1] -> output [batch_size, num_appliances]
 if model == 's2p':
@@ -186,92 +166,56 @@ elif model == 'TransformerSeq2Point':
 elif model == 'attention_cnn_Pytorch':
     NILMmodel = attention_cnn_Pytorch(window_size=window_size)
 
-NILMmodel = NILMmodel.to(device)
-
-# Loss and optimizer
-criterion = torch.nn.MSELoss()
-
-optimizer = optim.Adam(NILMmodel.parameters(), lr=learning_rate)
-
-# Save the model parameters.
+# where the model weights are saved.
 save_path = os.path.join('models', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.pth')
 
-# Initialize the early stopping object
-early_stopping = EarlyStopping(patience=3, verbose=True, path=save_path)
+# load the model weights
+NILMmodel.load_state_dict(torch.load(save_path))
+
+
+NILMmodel = NILMmodel.to(device)
 
 # Train the model
-memory_flag = 0
-def train():
-    NILMmodel.train()
-    for epoch in range(num_epochs):
-        epoch_loss = 0
-        epoch_idx = 0
-        for i, (inputs, targets) in enumerate(train_loader):
+def test():
+ 
+    # Switch model to evaluation mode
+    NILMmodel.eval()
 
-            # debugging
-            # print("Training sample ", i)
-            # print(inputs.shape, targets.shape)
+    # Initialize variables to store test metrics
+    test_mae = 0.0
+    test_mape = 0.0
+    test_mse = 0.0
+    num_batches = 0
 
-            # Move tensors to the configured device
+    # Validation
+    with torch.no_grad():
+
+        for inputs, targets in test_loader:
             inputs = inputs.to(device)
+            targets = targets.to(device)
+            predictions = NILMmodel(inputs)
 
-            # [batch_size, 1] for seq2point
-            # [batch_size, window_size] for seq2seq
-            # targets = targets.to(device) 
+            # Calculate metrics for the current batch
+            batch_mae = torch.mean(torch.abs(predictions - targets))
+            batch_mape = torch.mean(torch.abs((targets - predictions) / (targets + 1e-8))) * 100
+            batch_mse = torch.mean((predictions - targets) ** 2)
 
-            # Forward pass
-            outputs = NILMmodel(inputs)
-            loss = criterion(outputs.type(torch.DoubleTensor).to(device), targets.type(torch.DoubleTensor).to(device))
-            epoch_loss += loss
-            epoch_idx += 1
+            # Aggregate the metrics
+            test_mae += batch_mae
+            test_mape += batch_mape
+            test_mse += batch_mse
+            num_batches += 1
 
-            # Backward and optimize
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
 
-            if (i+1) % printfreq == 0:
-                print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f} (Average: {epoch_loss.item()/epoch_idx})', flush=True)
-                # torch.save(NILMmodel.state_dict(), save_path)
+    # Calculate the average metrics over all batches
+    test_mae /= num_batches
+    test_mape /= num_batches
+    test_mse /= num_batches
 
-                # Check GPU memory usage
-                memory_allocated = torch.cuda.memory_allocated(device)
-                print(f"Epoch {epoch+1}: GPU memory allocated: {memory_allocated / (1024 ** 2):.2f} MB", flush=True)
-
-                # Monitor CPU usage
-                cpu_percent = psutil.cpu_percent(interval=1)  # Monitor CPU usage over 1 second
-                print(f"Epoch {epoch + 1}: CPU Usage: {cpu_percent}%", flush=True)
-
-                # Monitor memory usage
-                memory_info = psutil.virtual_memory()
-                print(f"Epoch {epoch + 1}: Memory Usage: {memory_info.percent}%", flush=True)
-            
-        # Switch model to evaluation mode
-        NILMmodel.eval()
-
-        # Validation
-        with torch.no_grad():
-            val_loss = 0.0
-            for inputs, targets in val_loader:
-                inputs = inputs.to(device)
-                targets = targets.to(device)
-                outputs = NILMmodel(inputs)
-                loss = criterion(outputs.type(torch.DoubleTensor).to(device), targets.type(torch.DoubleTensor).to(device))
-                val_loss += loss.item()
-
-            val_loss /= len(val_loader)
-
-        print(f"Validation Loss after epoch {epoch + 1}: {val_loss}")
-
-        # Call the early stopping
-        early_stopping(val_loss, NILMmodel)
-
-        if early_stopping.early_stop:
-            print("Early stopping")
-            break
-
-        # Switch back to training mode
-        NILMmodel.train()
+    # Print or log the test metrics
+    print(f'Test MAE: {test_mae.item()}', flush=True)
+    print(f'Test MAPE: {test_mape.item()}', flush=True)
+    print(f'Test MSE: {test_mse.item()}')
 
 
         
@@ -279,5 +223,5 @@ def train():
 
 
 if __name__ == '__main__':
-    print("This is the result of train.py!!", flush=True)
-    train()
+    print("This is the result of test_reg.py!!", flush=True)
+    test()
