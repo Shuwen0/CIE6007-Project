@@ -24,7 +24,7 @@ This file loads an arbitrary model and train
 '''
 
 # Hyperparameters (default)
-model = 'attention_cnn_Pytorch' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch']
+model = 'TransformerSeq2Point' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch']
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
@@ -103,7 +103,7 @@ def get_arguments():
                         help='this is the directory of the training samples')
     parser.add_argument('--building',
                         type=int,
-                        default=4,
+                        default=2,
                         help='this is the index of the building')
     parser.add_argument('--pretrainedmodel_dir',
                         type=str,

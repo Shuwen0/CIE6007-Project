@@ -26,7 +26,7 @@ This file loads an arbitrary model and train
 
 # =========================================== model parameters ========================================
 # Hyperparameters (default)
-model = 's2p' # ['s2p', 'TransformerSeq2seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch]
+model = 'TransformerSeq2Point' # ['s2p', 'TransformerSeq2seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch']
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
