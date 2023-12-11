@@ -24,7 +24,7 @@ params_model = {
         'optimizer':'adam',
         'criterion':'BCEWithLogitsLoss',
         'num_epochs':100,
-        'printfreq': 1,
+        'printfreq': 100,
         'd_model': 512,
         'n_head': 2,
         'num_encoder_layers': 2
@@ -39,7 +39,7 @@ params_model = {
         'optimizer':'adam',
         'criterion':'BCEWithLogitsLoss',
         'num_epochs':100,
-        'printfreq': 1,
+        'printfreq': 100,
         'd_model': 512,
         'n_head': 2,
         'num_encoder_layers': 2
