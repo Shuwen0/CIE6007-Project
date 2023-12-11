@@ -15,34 +15,34 @@ params_model = {
         'transfer_cnn': False
     },
     'TransformerSeq2Seq': {
-        'window_size': 128, # doesn'thave to be odd
+        'window_size': 599, # doesn'thave to be odd
         'num_appliances': 1,
         'crop': None, # default is None, use one batch to try to overfit the model for debugging
         'header':0,
-        'batch_size': 16,
+        'batch_size': 64,
         'lr': 1e-3,
         'optimizer':'adam',
         'criterion':'BCEWithLogitsLoss',
         'num_epochs':100,
         'printfreq': 1,
         'd_model': 512,
-        'n_head': 8,
-        'num_encoder_layers': 6
+        'n_head': 2,
+        'num_encoder_layers': 2
     },
     'TransformerSeq2Point': {
-        'window_size': 21, # needs to be odd
+        'window_size': 599, # needs to be odd
         'num_appliances': 1,
         'crop': None, # default is None, could use small subset to try to overfit the model for debugging
         'header':0,
-        'batch_size': 32,
+        'batch_size': 64,
         'lr': 1e-3,
         'optimizer':'adam',
         'criterion':'BCEWithLogitsLoss',
         'num_epochs':100,
         'printfreq': 1,
         'd_model': 512,
-        'n_head': 8,
-        'num_encoder_layers': 6
+        'n_head': 2,
+        'num_encoder_layers': 2
     },
     'attention_cnn_Pytorch':{
         'window_size': 599, # needs to be odd

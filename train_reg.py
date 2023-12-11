@@ -234,17 +234,17 @@ def train():
                 print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f} (Average: {epoch_loss.item()/epoch_idx})', flush=True)
                 # torch.save(NILMmodel.state_dict(), save_path)
 
-                # Check GPU memory usage
-                memory_allocated = torch.cuda.memory_allocated(device)
-                print(f"Epoch {epoch+1}: GPU memory allocated: {memory_allocated / (1024 ** 2):.2f} MB", flush=True)
+                # # Check GPU memory usage
+                # memory_allocated = torch.cuda.memory_allocated(device)
+                # print(f"Epoch {epoch+1}: GPU memory allocated: {memory_allocated / (1024 ** 2):.2f} MB", flush=True)
 
-                # Monitor CPU usage
-                cpu_percent = psutil.cpu_percent(interval=1)  # Monitor CPU usage over 1 second
-                print(f"Epoch {epoch + 1}: CPU Usage: {cpu_percent}%", flush=True)
+                # # Monitor CPU usage
+                # cpu_percent = psutil.cpu_percent(interval=1)  # Monitor CPU usage over 1 second
+                # print(f"Epoch {epoch + 1}: CPU Usage: {cpu_percent}%", flush=True)
 
-                # Monitor memory usage
-                memory_info = psutil.virtual_memory()
-                print(f"Epoch {epoch + 1}: Memory Usage: {memory_info.percent}%", flush=True)
+                # # Monitor memory usage
+                # memory_info = psutil.virtual_memory()
+                # print(f"Epoch {epoch + 1}: Memory Usage: {memory_info.percent}%", flush=True)
             
         # Switch model to evaluation mode
         NILMmodel.eval()
