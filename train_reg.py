@@ -178,7 +178,7 @@ val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size, shuffle=Fals
 if model == 's2p':
     NILMmodel = Seq2point(window_length=window_size, n_dense=n_dense, num_appliances=num_appliances, transfer_cnn=transfer_cnn, cnn_weights=None).to(device)
 elif model == 'seq2seqCNN':
-    NILMmodel = Seq2seqCNN(window_length=window_size, n_dense=n_dense, target_length=num_appliances, transfer_cnn=transfer_cnn, cnn_weights=None).to(device)
+    NILMmodel = Seq2seqCNN(window_length=window_size, n_dense=n_dense, target_length=window_size, transfer_cnn=transfer_cnn, cnn_weights=None).to(device)
 elif model == 'TransformerSeq2Seq':
     NILMmodel = TransformerSeq2Seq(window_size=window_size, d_model=d_model, nhead=n_head, num_encoder_layers=num_encoder_layers).to(device)
 elif model == 'TransformerSeq2Point':
@@ -221,6 +221,9 @@ def train():
 
             # Forward pass
             outputs = NILMmodel(inputs)
+
+            # debug
+            print("outputs shape: ", outputs.shape)
             loss = criterion(outputs.type(torch.DoubleTensor).to(device), targets.type(torch.DoubleTensor).to(device))
             epoch_loss += loss
             epoch_idx += 1

@@ -42,7 +42,7 @@ class REFIT_Dataset(Dataset):
         # seq2seq or seq2point
         if self.mode == 's2p' or self.mode == 'TransformerSeq2Point' or self.mode == 'attention_cnn_Pytorch': # seq2point needs padding on both sides
             self.available_size = self.total_size # each y_t is separate and unique
-        elif self.mode == 'TransformerSeq2Seq' or self.model == 'seq2seqCNN': # seq2seq
+        elif self.mode == 'TransformerSeq2Seq' or self.mode == 'seq2seqCNN': # seq2seq
             self.available_size = self.total_size - self.window_size + 1 # predict y_{t:t+offset} each time
 
         # divide train/test/val
@@ -138,7 +138,7 @@ class REFIT_Dataset(Dataset):
 
             return input_tensor, target_tensor
     
-        elif self.mode == 'TransformerSeq2Seq' or self.model == 'seq2seqCNN':
+        elif self.mode == 'TransformerSeq2Seq' or self.mode == 'seq2seqCNN':
             start_idx = idx
             end_idx = idx + self.window_size
 
