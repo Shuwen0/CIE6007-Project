@@ -14,6 +14,20 @@ params_model = {
         'n_dense': 1,
         'transfer_cnn': False
     },
+    'seq2seqCNN': {
+        'window_size': 599, # needs to be odd
+        'crop':None, # default is None, could use small subset to try to overfit the model for debugging
+        'header':0,
+        'num_appliances': 1,
+        'batch_size': 1000,
+        'lr': 1e-3,
+        'optimizer':'adam',
+        'criterion':'BCEWithLogitsLoss',
+        'num_epochs': 10,
+        'printfreq': 100,
+        'n_dense': 1,
+        'transfer_cnn': False
+    },
     'TransformerSeq2Seq': {
         'window_size': 599, # doesn'thave to be odd
         'num_appliances': 1,

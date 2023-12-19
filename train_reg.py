@@ -11,6 +11,7 @@ import argparse
 # files of my implementation
 from REFIT_Dataset import REFIT_Dataset
 from seq2point import Seq2point
+from seq2seqCNN import Seq2seqCNN
 from transformer import TransformerSeq2Seq, TransformerSeq2Point
 from attention_cnn import attention_cnn_Pytorch
 from dataset_infos import params_appliance
@@ -24,7 +25,7 @@ This file loads an arbitrary model and train
 '''
 
 # Hyperparameters (default)
-model = 'TransformerSeq2Point' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch']
+model = 'seq2seqCNN' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch', 'seq2seqCNN']
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
@@ -36,7 +37,7 @@ optimizer_name = params_model[model]['optimizer'] # ['Adam', 'Adam']
 criterion_name = params_model[model]['criterion'] # ["BCEWithLogitsLoss", 'BCEWithLogitsLoss']  
 
 # Only for s2p
-if model == 's2p' or model == 'attention_cnn_Pytorch':
+if model == 's2p' or model == 'attention_cnn_Pytorch' or model == 'seq2seqCNN':
     offset = window_size // 2
     n_dense = params_model[model]['n_dense']
     transfer_cnn = params_model[model]['transfer_cnn']
@@ -54,9 +55,6 @@ if model == 'TransformerSeq2Point':
     num_encoder_layers = params_model[model]['num_encoder_layers']
     offset = window_size // 2
 
-
-use_focal_loss = False
-alpha = 2
 
 def remove_space(string):
     return string.replace(" ","")
@@ -179,6 +177,8 @@ val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size, shuffle=Fals
 # Model: input [batch_size, window_size, 1] -> output [batch_size, num_appliances]
 if model == 's2p':
     NILMmodel = Seq2point(window_length=window_size, n_dense=n_dense, num_appliances=num_appliances, transfer_cnn=transfer_cnn, cnn_weights=None).to(device)
+elif model == 'seq2seqCNN':
+    NILMmodel = Seq2seqCNN(window_length=window_size, n_dense=n_dense, target_length=num_appliances, transfer_cnn=transfer_cnn, cnn_weights=None).to(device)
 elif model == 'TransformerSeq2Seq':
     NILMmodel = TransformerSeq2Seq(window_size=window_size, d_model=d_model, nhead=n_head, num_encoder_layers=num_encoder_layers).to(device)
 elif model == 'TransformerSeq2Point':
