@@ -34,7 +34,7 @@ class REFIT_Dataset(Dataset):
                             )
         cols_data = self.df.columns[1:] ####################################### remove timestamps
         self.df = self.df[cols_data]
-        print(cols_data)
+        # print(cols_data)
         
         self.scaler = StandardScaler()
         self.total_size = self.check_length()
