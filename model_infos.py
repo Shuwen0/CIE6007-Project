@@ -15,7 +15,7 @@ params_model = {
         'transfer_cnn': False
     },
     'seq2seqCNN': {
-        'window_size': 599, # needs to be odd
+        'window_size': 480, # needs to be odd
         'crop':None, # default is None, could use small subset to try to overfit the model for debugging
         'header':0,
         'num_appliances': 1,
@@ -29,7 +29,7 @@ params_model = {
         'transfer_cnn': False
     },
     'TransformerSeq2Seq': {
-        'window_size': 599, # doesn'thave to be odd
+        'window_size': 480, # doesn'thave to be odd
         'num_appliances': 1,
         'crop': None, # default is None, use one batch to try to overfit the model for debugging
         'header':0,

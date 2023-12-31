@@ -50,6 +50,8 @@ class REFIT_Dataset(Dataset):
         num_test = int(self.available_size * 0.2)
         num_vali = self.available_size - num_train - num_test
 
+        # border1s contains the index of the first sample (0 means the first index)
+        # birder2s contains the index of the last sample (open bracket)
         self.border1s = [0, num_train, self.available_size - num_test]
         self.border2s = [num_train, num_train + num_vali, self.available_size]
         self.border1 = self.border1s[self.set_type]
@@ -91,7 +93,7 @@ class REFIT_Dataset(Dataset):
         # normalize the data based on training statistics
         if self.normalize == 'fixed':
             data = self.df.values
-            self.data_x = data[self.border1:self.border2, 0] # aggregate power
+            self.data_x = data[self.border1:+ self.window_size - 1, 0] # aggregate power
             self.data_y = data[self.border1:self.border2, self.target_channel] # appliance power
             self.data_x = (self.data_x - self.mean[0]) / self.std[0]
             self.data_y = (self.data_y - self.mean[1]) / self.std[1]
@@ -134,7 +136,7 @@ class REFIT_Dataset(Dataset):
             target = self.data_y[midpoint_idx] # size: 1 (scaler)
             
             input_tensor = torch.from_numpy(input).float()
-            target_tensor = torch.tensor([target], dtype=torch.float32)
+            target_tensor = torch.tensor(target, dtype=torch.float32) # torch.size () --> targets: [batch_size,]
 
             return input_tensor, target_tensor
     
