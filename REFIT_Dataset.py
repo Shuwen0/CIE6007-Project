@@ -153,6 +153,142 @@ class REFIT_Dataset(Dataset):
 
             return input_tensor, target_tensor
 
+
+import torch
+from torch.utils.data import Dataset
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+
+# my files
+from data_infos import params_factory, params_label
+
+# data path
+DATA_ROOT = '../../../../Undergraduate/ERG4901/'
+
+class IAIDDataset(Dataset):
+    def __init__(self, building: int, target_channel: int, window_size=120, target_size=120, stride = 120, crop=None, scale=True, flag='train'):
+        '''Dataset instance that reads the corresponding file (data and label)
+        :param material_type: str, the name of the factory
+        :param appliance: str, target appliance name
+        :param window_size: int, the size of the sliding window
+        :param target_size: int, the size of the prediction window size, usually equal to window_size
+        :param stride: int, the stride of the sliding window
+        :param crop: the number of rows to read, None means all
+        :param scale: bool, whether to scale aggregate power (z-score)
+        :param flag: str, could be 'train'/'test'/'val', ratio = 7:2:1
+        '''
+
+        # ensure legal input
+        assert flag in ['train', 'test', 'val']
+
+
+        type_map = {'train': 0, 'val': 1, 'test': 2}
+        self.set_type = type_map[flag]
+        self.window_size = window_size
+        self.target_size = target_size
+        self.stride = stride
+        self.scale = scale
+        self.scaler = StandardScaler()
+
+        # Define the file paths
+        data_file_path = DATA_ROOT + f'CLEAN_House{building}.csv'
+        
+        # Read the files (for debug: crop=100)
+        self.data_df = pd.read_csv(data_file_path, nrows=crop) # interval: 6-8s
+
+
+        # debug ============================
+        # check for the column names
+        self.data_df.drop(columns=self.data_df.columns[0], axis=1, inplace=True) # drop the timestamp column
+        cols_names = self.aligned_df.columns
+        print(cols_names)
+        
+        # Get the column index for the specified appliance
+        self.appliance_index = target_channel
+        self.power_index = 1
+
+        # each sample [x_t, x_{t+W-1}], calculate the total number of samples
+        self.num_samples = (len(self.data_df) - self.window_size) // self.stride + 1 
+
+        # divide train/test/val
+        num_train = int(self.num_samples * 0.7)
+        num_test = int(self.num_samples * 0.2)
+        num_vali = self.num_samples - num_train - num_test
+
+        self.length = [num_train, num_vali, num_test]
+
+        self.border1s = [0, num_train*self.stride, (self.num_samples-num_test)*self.stride]
+        self.border2s = [(num_train-1)*self.stride + self.window_size, # the end index of trainining data
+                         (num_train+num_vali-1)*self.stride + self.window_size, # the end index of validation data
+                         (self.num_samples-1)*self.stride + self.window_size] # the end index of testining data
+        self.border1 = self.border1s[self.set_type]
+        self.border2 = self.border2s[self.set_type]
+
+        # debug:
+        # print("self.border1s: ", self.border1s)
+        # print("self.border2s: ", self.border2s)
+
+        self.normalize()
+
+
+    def __len__(self):
+        return self.length[self.set_type]
+
+    def __getitem__(self, idx): # idx means the idx of sample! idx = 0 means the first sample
+
+
+        if idx < 0:  # Convert negative indices to positive
+            idx = len(self) + idx
+
+        if idx >= len(self):  # Check for out-of-bounds access
+            raise IndexError("Index out of bounds")
+
+        start_idx = idx * self.stride
+        end_idx = idx * self.stride + self.window_size
+
+        power = self.data_x[start_idx:end_idx]# shape: [window_size,] 
+        state = self.data_y[start_idx:end_idx] # shape: [window_size,] 
+
+        power_tensor = torch.from_numpy(power).float()
+        state_tensor = torch.from_numpy(state).float()
+
+        return power_tensor, state_tensor
+         
+    def normalize(self):
+        '''Normalize the aggregate and define x (power), y (state)'''
+
+        if self.scale:
+
+                # extract the training part of aggregate power for scaler fitting (scaler expects 2D input)
+                train_data = self.data_df.iloc[self.border1s[0]:self.border2s[0], :] # [power, appliance1, ...]
+                self.scaler.fit(train_data.values)
+
+                # extract the column of aggregate power to be transformed
+                data = self.scaler.transform(self.data_df.values)
+                
+                # debug
+                print("The first row of training data is: ", data[0])
+        else:
+            data = self.data_df.values
+
+        self.data_x = data[self.border1:self.border2, self.power_index]
+        self.data_y = data[self.border1:self.border2, self.appliance_index]
+
+        # debug
+        # print("The length of aggregate power data in total is: ", self.data_x.shape[0])
+        # print("The length of available samples is: ", self.border2-self.border1)
+
+
+# Example usage (for debugging)
+# material_type = 'Glass'
+# appliance = 'electric furnace'
+# dataset = IAIDDataset(material_type, appliance, window_size=10, target_size=10, stride=2, crop=100, scale=True)
+# print("The shapes of the first input-output pairs are: ")
+# print(dataset[0][0].shape, dataset[0][1].shape)
+# print("The shapes of the last input-output pair are: ")
+# print(dataset[-1][0].shape, dataset[-1][1].shape)
+# print("The shapes of the dataset is: ")
+# print(len(dataset))
             
 
     
