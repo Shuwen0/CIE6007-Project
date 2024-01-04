@@ -149,26 +149,16 @@ print("Training on ", device, flush=True)
 
 # Dataset and DataLoader 
 # ======================================================== 'CLEAN_House' is based on REFIT dataset ===============
-train_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
-                          offset=offset, 
-                          window_size=window_size, 
-                          crop=None, 
-                          header=0, 
-                          mode=model, 
-                          flag='train', 
-                          scale=True, 
-                          percent=100, 
-                          target_channel=appliance_channel)
-val_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
-                          offset=offset, 
-                          window_size=window_size, 
-                          crop=None, 
-                          header=0, 
-                          mode=model, 
-                          flag='val', 
-                          scale=True, 
-                          percent=100, 
-                          target_channel=appliance_channel)
+train_dataset = REFIT_Dataset(data_file_path=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+                        target_channel=appliance_channel,
+                        crop=None, 
+                        flag='train', 
+                        scale=True)
+val_dataset = REFIT_Dataset(data_file_path=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+                        target_channel=appliance_channel,
+                        crop=None, 
+                        flag='val', 
+                        scale=True)
 print("The size of total training dataset is: ", len(train_dataset), flush=True)
 print("The size of validation dataset is: ", len(val_dataset))
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)

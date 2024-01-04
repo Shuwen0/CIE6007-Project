@@ -237,7 +237,7 @@ class REFIT_Dataset(Dataset):
         start_idx = idx * self.stride
         end_idx = idx * self.stride + self.window_size
 
-        power = self.data_x[start_idx:end_idx]# shape: [window_size,] 
+        power = self.data_x[start_idx:end_idx].reshape(-1,1) # shape: [window_size, 1] 
         state = self.data_y[start_idx:end_idx] # shape: [window_size,] 
 
         power_tensor = torch.from_numpy(power).float()
@@ -272,14 +272,14 @@ class REFIT_Dataset(Dataset):
 
     
 
-# debug (1 in server, 2 in laptop) Currently using 1
-train_dataset = REFIT_Dataset(data_file_path='../REFIT/New_Data/CLEAN_House2.csv', 
-                          target_channel=1, 
-                          window_size=120, target_size=120, stride = 120, 
-                          crop=1200, scale=True, flag='train')
-print(train_dataset[0])
-print(train_dataset[0][0].shape, train_dataset[0][1].shape)# [window_size,1], scalar
-print(len(train_dataset))
+# # debug (1 in server, 2 in laptop) Currently using 1
+# train_dataset = REFIT_Dataset(data_file_path='../REFIT/New_Data/CLEAN_House2.csv', 
+#                           target_channel=1, 
+#                           window_size=120, target_size=120, stride = 120, 
+#                           crop=1200, scale=True, flag='train')
+# print(train_dataset[0])
+# print(train_dataset[0][0].shape, train_dataset[0][1].shape)# [window_size,1], scalar
+# print(len(train_dataset))
 
 
 
