@@ -143,16 +143,11 @@ print("Training on ", device, flush=True)
 
 # Dataset and DataLoader 
 # ======================================================== 'CLEAN_House' is based on REFIT dataset ===============
-test_dataset = REFIT_Dataset(filename=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
-                          offset=offset, 
-                          window_size=window_size, 
-                          crop=None, 
-                          header=0, 
-                          mode=model, 
-                          flag='test', 
-                          scale=True, 
-                          percent=100, 
-                          target_channel=appliance_channel)
+test_dataset = REFIT_Dataset(data_file_path=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+                        target_channel=appliance_channel,
+                        crop=None, 
+                        flag='test', 
+                        scale=True)
 print("The size of total test dataset is: ", len(test_dataset), flush=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
 
