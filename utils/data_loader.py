@@ -995,7 +995,7 @@ class Dataset_REFIT(Dataset):
         self.timeenc = timeenc
         self.freq = freq
         self.percent = percent
-        self.target_channel = target_channel
+        self.target_channel = int(target_channel)
 
         self.root_path = root_path
         self.data_path = data_path
@@ -1066,7 +1066,7 @@ class Dataset_REFIT(Dataset):
         # self.data_x = data[border1:border2, 0].reshape((len(data[border1:border2, 0]), 1))
         # self.data_y = data[border1:border2, self.target_channel].reshape((len(data[border1:border2, self.target_channel]), 1))
         self.data_x = data[border1:border2, 0].reshape((-1, 1))
-        self.data_y = data[border1:border2, self.target_channel].reshape((-1, 1))
+        self.data_y = data[border1:border2, 1].reshape((-1, 1))
         self.data_stamp = data_stamp
         print(self.data_x.shape)
 
