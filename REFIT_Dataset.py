@@ -9,7 +9,7 @@ import pandas as pd
 import os
 
 
-class REFIT_Dataset(Dataset):
+class REFIT_Dataset_Old(Dataset):
     def __init__(self, filename, offset=299, window_size=599, crop=None, header=0, mode='s2p', flag='train', scale=True, percent=100, target_channel=2, mean=[522,700], std=[814,1000], normalize='not fixed'):
 
         self.filename = filename
@@ -159,17 +159,10 @@ from torch.utils.data import Dataset
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-# my files
-from data_infos import params_factory, params_label
-
-# data path
-DATA_ROOT = '../../../../Undergraduate/ERG4901/'
-
-class IAIDDataset(Dataset):
-    def __init__(self, building: int, target_channel: int, window_size=120, target_size=120, stride = 120, crop=None, scale=True, flag='train'):
+class REFIT_Dataset(Dataset):
+    def __init__(self, data_file_path: str, target_channel: int, window_size=120, target_size=120, stride = 120, crop=None, scale=True, flag='train'):
         '''Dataset instance that reads the corresponding file (data and label)
-        :param material_type: str, the name of the factory
-        :param appliance: str, target appliance name
+        :param target_channel: int, column idx of appliance
         :param window_size: int, the size of the sliding window
         :param target_size: int, the size of the prediction window size, usually equal to window_size
         :param stride: int, the stride of the sliding window
@@ -190,9 +183,6 @@ class IAIDDataset(Dataset):
         self.scale = scale
         self.scaler = StandardScaler()
 
-        # Define the file paths
-        data_file_path = DATA_ROOT + f'CLEAN_House{building}.csv'
-        
         # Read the files (for debug: crop=100)
         self.data_df = pd.read_csv(data_file_path, nrows=crop) # interval: 6-8s
 
@@ -200,12 +190,13 @@ class IAIDDataset(Dataset):
         # debug ============================
         # check for the column names
         self.data_df.drop(columns=self.data_df.columns[0], axis=1, inplace=True) # drop the timestamp column
-        cols_names = self.aligned_df.columns
+        cols_names = self.data_df.columns
         print(cols_names)
         
-        # Get the column index for the specified appliance
+        # Get the column index for the specified appliance 
+        # (timestamp column will be removed, so aggregate power is the first column)
         self.appliance_index = target_channel
-        self.power_index = 1
+        self.power_index = 0
 
         # each sample [x_t, x_{t+W-1}], calculate the total number of samples
         self.num_samples = (len(self.data_df) - self.window_size) // self.stride + 1 
@@ -279,41 +270,16 @@ class IAIDDataset(Dataset):
         # print("The length of available samples is: ", self.border2-self.border1)
 
 
-# Example usage (for debugging)
-# material_type = 'Glass'
-# appliance = 'electric furnace'
-# dataset = IAIDDataset(material_type, appliance, window_size=10, target_size=10, stride=2, crop=100, scale=True)
-# print("The shapes of the first input-output pairs are: ")
-# print(dataset[0][0].shape, dataset[0][1].shape)
-# print("The shapes of the last input-output pair are: ")
-# print(dataset[-1][0].shape, dataset[-1][1].shape)
-# print("The shapes of the dataset is: ")
-# print(len(dataset))
-            
-
     
 
 # debug (1 in server, 2 in laptop) Currently using 1
-# train_dataset = REFIT_Dataset(filename='../../../../NILM Datasets/REFIT/Raw_Data/CLEAN_House2.csv', 
-#                           offset=299, 
-#                           window_size=599, 
-#                           crop=10, 
-#                           header=0, 
-#                           mode='s2p', 
-#                           flag='train', 
-#                           scale=True, 
-#                           percent=100, 
-#                           target_channel=8,
-#                           normalize='not fixed')
-# print(train_dataset[0])
-# print(train_dataset[0][0].shape, train_dataset[0][1].shape)# [window_size,1], scalar
-# print(len(train_dataset))
-
-# train_dataset = REFIT_Dataset(filename='../kettle/Classification/kettle_training_.csv', offset=299, window_size=599, crop=600, mode='s2s')
-# print(train_dataset[0]) # [window_size,1], [window_size,1], [window_size,1]
-# print(train_dataset[0][0].shape, train_dataset[0][1].shape)
-# print(len(train_dataset)) 
-# train_dataloader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
+train_dataset = REFIT_Dataset(data_file_path='../REFIT/New_Data/CLEAN_House2.csv', 
+                          target_channel=1, 
+                          window_size=120, target_size=120, stride = 120, 
+                          crop=1200, scale=True, flag='train')
+print(train_dataset[0])
+print(train_dataset[0][0].shape, train_dataset[0][1].shape)# [window_size,1], scalar
+print(len(train_dataset))
 
 
 
