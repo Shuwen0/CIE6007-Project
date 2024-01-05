@@ -13,7 +13,7 @@ mkdir -p "$output_dir"
 # Loop through each appliance and building and run the command
 for appliance in "${appliances[@]}"; do
     for building in "${buildings[@]}"; do
-        output_file="${output_dir}/output_REFIT_${appliance}_s2p_Ts2p_B${building}.txt"
+        output_file="${output_dir}/Ts2s/output_REFIT_${appliance}_s2p_Ts2p_B${building}.txt"
         python3 test_reg.py --appliance_name "$appliance" --building "$building" --dataset REFIT > "$output_file"
     done
 done

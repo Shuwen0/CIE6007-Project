@@ -26,7 +26,7 @@ This file loads an arbitrary model and train
 
 # =========================================== model parameters ========================================
 # Hyperparameters (default)
-model = 'TransformerSeq2Point' # ['s2p', 'TransformerSeq2seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch']
+model = 'TransformerSeq2Seq' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch']
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
@@ -129,7 +129,7 @@ task = args.task
 data_dir = os.path.join('..', dataset_name, 'New_Data') # NOW: '../REFIT/New_Data/'
 gpu = args.gpu
 num_appliances = 1
-
+save_results = True
 
 
 
@@ -182,6 +182,9 @@ def test():
     test_mse = 0.0
     num_batches = 0
 
+    all_labels = []
+    all_predictions = []
+
     # Validation
     with torch.no_grad():
 
@@ -189,6 +192,7 @@ def test():
             inputs = inputs.to(device)
             targets = targets.to(device)
             predictions = NILMmodel(inputs)
+
 
             # Calculate metrics for the current batch
             batch_mae = torch.mean(torch.abs(predictions - targets))
@@ -201,6 +205,16 @@ def test():
             test_mse += batch_mse
             num_batches += 1
 
+
+            # Convert to lists and append to all_labels and all_predictions
+            all_labels.extend(targets.cpu().numpy().tolist())
+            all_predictions.extend(predictions.cpu().numpy().tolist())
+    
+    if save_results:
+        label_file = os.path.join('results','npy_file',dataset_name+'_B'+str(building)+'_'+appliance_name+'.npy')
+        preds_file = os.path.join('results','npy_file',dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.npy')
+        np.save(label_file, np.array(all_labels))
+        np.save(preds_file, np.array(all_predictions))
 
     # Calculate the average metrics over all batches
     test_mae /= num_batches
