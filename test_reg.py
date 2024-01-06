@@ -14,8 +14,8 @@ from transformer import TransformerSeq2Seq, TransformerSeq2Point
 from attention_cnn import attention_cnn_Pytorch
 from dataset_infos import params_appliance
 from model_infos import params_model
-from utils.early_stopping import EarlyStopping
 from seq2seqCNN import Seq2seqCNN
+from utils.metrics import metric
 
 from train_reg import params_dataset
 
@@ -179,11 +179,11 @@ def test():
     # Switch model to evaluation mode
     NILMmodel.eval()
 
-    # Initialize variables to store test metrics
-    test_mae = 0.0
-    test_mape = 0.0
-    test_mse = 0.0
-    num_batches = 0
+    # # Initialize variables to store test metrics
+    # test_mae = 0.0
+    # test_mape = 0.0
+    # test_mse = 0.0
+    # num_batches = 0
 
     all_labels = []
     all_predictions = []
@@ -197,38 +197,80 @@ def test():
             predictions = NILMmodel(inputs)
 
 
-            # Calculate metrics for the current batch
-            batch_mae = torch.mean(torch.abs(predictions - targets))
-            batch_mape = torch.mean(torch.abs((targets - predictions) / (targets + 1e-8))) * 100
-            batch_mse = torch.mean((predictions - targets) ** 2)
+            # # Calculate metrics for the current batch
+            # batch_mae = torch.mean(torch.abs(predictions - targets))
+            # batch_mape = torch.mean(torch.abs((targets - predictions) / (targets + 1e-8))) * 100
+            # batch_mse = torch.mean((predictions - targets) ** 2)
 
-            # Aggregate the metrics
-            test_mae += batch_mae
-            test_mape += batch_mape
-            test_mse += batch_mse
-            num_batches += 1
+            # # Aggregate the metrics
+            # test_mae += batch_mae
+            # test_mape += batch_mape
+            # test_mse += batch_mse
+            # num_batches += 1
 
 
             # Convert to lists and append to all_labels and all_predictions
             all_labels.extend(targets.cpu().numpy().tolist())
             all_predictions.extend(predictions.cpu().numpy().tolist())
-    
+
+    # convert labels and predictions to numpy array
+    all_labels = np.array(all_labels)
+    all_predictions = np.array(all_predictions)
+
+    # calculate the un-normalized version based on avergae and standard deviation
+    training_label_mean = test_dataset.label_mean
+    training_label_std = test_dataset.label_std
+
+    unnormalized_all_labels = all_labels * training_label_std + training_label_mean
+    unnormalized_all_predictions = all_predictions * training_label_std + training_label_mean
+
+    # store the labels and predictions (normalized + unnormalized)
     if save_results:
-        label_file = os.path.join('results','npy_file',dataset_name+'_B'+str(building)+'_'+appliance_name+'.npy')
-        preds_file = os.path.join('results','npy_file',dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.npy')
+
+        label_file = os.path.join('results','npy_file', 'normalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'.npy')
+        preds_file = os.path.join('results','npy_file', 'normalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.npy')
+
+        unnormalized_label_file = os.path.join('results','npy_file', 'unnormalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'.npy')
+        unnormalized_preds_file = os.path.join('results','npy_file', 'unnormalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.npy')
+        
         np.save(label_file, np.array(all_labels))
         np.save(preds_file, np.array(all_predictions))
 
+        np.save(unnormalized_label_file, np.array(unnormalized_all_labels))
+        np.save(unnormalized_preds_file, np.array(unnormalized_all_predictions))
+
+
+
     # Calculate the average metrics over all batches
-    test_mae /= num_batches
-    test_mape /= num_batches
-    test_mse /= num_batches
+    # test_mae /= num_batches
+    # test_mape /= num_batches
+    # test_mse /= num_batches
+    
+    # calculate the metrics (normalized + unnormalized)
+    mae, mse, rmse, mape, mspe, smape, nd = metric(all_predictions, all_labels)
 
     # Print or log the test metrics
-    print(f'Test MAE: {test_mae.item()}', flush=True)
-    print(f'Test MAPE: {test_mape.item()}', flush=True)
-    print(f'Test MSE: {test_mse.item()}')
+    print("Below are the metrics for the normalized version: ===========================================")
+    print(f'Test MSE: {mse}', flush=True)
+    print(f'Test MAE: {mae}', flush=True)
+    print(f'Test MAPE: {mape}', flush=True)
+    print(f'Test RMSE: {rmse}', flush=True)
+    print(f'Test MSPE: {mspe}', flush=True)
+    print(f'Test SMAPE: {smape}', flush=True)
+    print(f'Test ND: {nd}', flush=True)
 
+    # now the un-normalized version
+    mae, mse, rmse, mape, mspe, smape, nd = metric(unnormalized_all_predictions, unnormalized_all_labels)
+
+    # Print or log the test metrics
+    print("Below are the metrics for the un-normalized version: ===========================================")
+    print(f'Test MSE: {mse}', flush=True)
+    print(f'Test MAE: {mae}', flush=True)
+    print(f'Test MAPE: {mape}', flush=True)
+    print(f'Test RMSE: {rmse}', flush=True)
+    print(f'Test MSPE: {mspe}', flush=True)
+    print(f'Test SMAPE: {smape}', flush=True)
+    print(f'Test ND: {nd}', flush=True)
 
         
             

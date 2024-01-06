@@ -160,7 +160,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 class REFIT_Dataset(Dataset):
-    def __init__(self, data_file_path: str, target_channel: int, window_size=120, target_size=120, stride = 120, crop=None, scale=True, flag='train'):
+    def __init__(self, data_file_path: str, target_channel: int, window_size=120, target_size=120, stride=120, crop=None, scale=True, flag='train'):
         '''Dataset instance that reads the corresponding file (data and label)
         :param target_channel: int, column idx of appliance
         :param window_size: int, the size of the sliding window
@@ -254,13 +254,22 @@ class REFIT_Dataset(Dataset):
                 train_data = self.data_df.iloc[self.border1s[0]:self.border2s[0], :] # [power, appliance1, ...]
                 self.scaler.fit(train_data.values)
 
+                # Store the mean and std dev for labels
+                self.label_mean = self.scaler.mean_[self.appliance_index]
+                self.label_std = self.scaler.scale_[self.appliance_index]
+
                 # extract the column of aggregate power to be transformed
                 data = self.scaler.transform(self.data_df.values)
                 
-                # debug
-                print("The first row of training data is: ", data[0])
+                # # debug
+                # print("The first row of training data is: ", data[0])
         else:
             data = self.data_df.values
+
+            # no alterations, merely a placeholder
+            self.label_mean = 0
+            self.label_std = 1
+
 
         self.data_x = data[self.border1:self.border2, self.power_index]
         self.data_y = data[self.border1:self.border2, self.appliance_index]
