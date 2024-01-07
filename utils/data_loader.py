@@ -1038,7 +1038,7 @@ class Dataset_REFIT(Dataset):
             # print(cols_data)
         elif self.features == 'S':
             df_data = df_raw[[self.target_channel]]
-        elif self.features == 'LD':
+        elif self.features == 'LD': # load disaggregation?????????????????/
             cols_data = df_raw.columns[[1, self.target_channel]]
             df_data = df_raw[cols_data]
 
