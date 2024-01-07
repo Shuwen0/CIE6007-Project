@@ -158,9 +158,11 @@ import torch
 from torch.utils.data import Dataset
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+
 
 class REFIT_Dataset(Dataset):
-    def __init__(self, data_file_path: str, target_channel: int, window_size=120, target_size=120, stride=120, crop=None, scale=True, flag='train'):
+    def __init__(self, data_file_path: str, target_channel: int, window_size=120, target_size=120, stride=120, crop=None, scale='standard', flag='train'):
         '''Dataset instance that reads the corresponding file (data and label)
         :param target_channel: int, column idx of appliance
         :param window_size: int, the size of the sliding window
@@ -173,6 +175,7 @@ class REFIT_Dataset(Dataset):
 
         # ensure legal input
         assert flag in ['train', 'test', 'val']
+        assert scale in [None, 'standard', 'minmax']
 
 
         type_map = {'train': 0, 'val': 1, 'test': 2}
@@ -181,7 +184,10 @@ class REFIT_Dataset(Dataset):
         self.target_size = target_size
         self.stride = stride
         self.scale = scale
-        self.scaler = StandardScaler()
+        if scale == 'standard':
+            self.scaler = StandardScaler()
+        elif scale == 'minmax':
+            self.scaler = MinMaxScaler()
 
         # Read the files (for debug: crop=100)
         self.data_df = pd.read_csv(data_file_path, nrows=crop) # interval: 6-8s
@@ -248,21 +254,36 @@ class REFIT_Dataset(Dataset):
     def normalize(self):
         '''Normalize the aggregate and define x (power), y (state)'''
 
-        if self.scale:
+        if self.scale == 'standard':
 
-                # extract the training part of aggregate power for scaler fitting (scaler expects 2D input)
-                train_data = self.data_df.iloc[self.border1s[0]:self.border2s[0], :] # [power, appliance1, ...]
-                self.scaler.fit(train_data.values)
+            # extract the training part of aggregate power for scaler fitting (scaler expects 2D input)
+            train_data = self.data_df.iloc[self.border1s[0]:self.border2s[0], :] # [power, appliance1, ...]
+            self.scaler.fit(train_data.values)
 
-                # Store the mean and std dev for labels
-                self.label_mean = self.scaler.mean_[self.appliance_index]
-                self.label_std = self.scaler.scale_[self.appliance_index]
+            # Store the mean and std dev for labels
+            self.label_mean = self.scaler.mean_[self.appliance_index]
+            self.label_std = self.scaler.scale_[self.appliance_index]
 
-                # extract the column of aggregate power to be transformed
-                data = self.scaler.transform(self.data_df.values)
-                
-                # # debug
-                # print("The first row of training data is: ", data[0])
+            # extract the column of aggregate power to be transformed
+            data = self.scaler.transform(self.data_df.values)
+            
+            # # debug
+            # print("The first row of training data is: ", data[0])
+
+        elif self.scale == 'minmax':
+
+            # extract the training part of aggregate power for scaler fitting (scaler expects 2D input)
+            train_data = self.data_df.iloc[self.border1s[0]:self.border2s[0], :] # [power, appliance1, ...]
+            # Min-Max Scaler
+            self.scaler.fit(train_data.values)
+
+            # As MinMaxScaler doesn't provide mean and std, we'll store min and range for labels
+            self.label_min = self.scaler.data_min_[self.appliance_index]
+            self.label_range = self.scaler.data_range_[self.appliance_index]
+
+            # transform the entire dataset
+            data = self.scaler.transform(self.data_df.values)
+            
         else:
             data = self.data_df.values
 
