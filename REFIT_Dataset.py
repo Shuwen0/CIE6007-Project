@@ -442,23 +442,23 @@ class Dataset_REFIT(Dataset):
 # print(train_dataset[0][0].shape, train_dataset[0][1].shape)# [window_size,1], scalar
 # print(len(train_dataset))
 
-test_dataset = Dataset_REFIT(data_path='../REFIT/New_Data/CLEAN_House2.csv', 
-                             flag='test', 
-                             size=[120,0,120], # window_size, NA, target_size
-                             features='LD', # load disaggregation
-                             target='OT', # NA
-                             scale=True, # minmax scaler
-                             timeenc=0, # NA
-                             freq='t', # NA
-                             percent=100, # NA, could be of use in transfer learning
-                             max_len=-1, # NA
-                             target_channel=1, # target index 
-                             train_all=True) # NA
-print(min(test_dataset[0][0]))
-print(min(test_dataset[5000][0]))
-print(min(test_dataset[9554][0]))
-print(test_dataset[0][0].shape, test_dataset[0][1].shape)# [window_size,1], scalar
-print(len(test_dataset))
+# test_dataset = Dataset_REFIT(data_path='../REFIT/New_Data/CLEAN_House2.csv', 
+#                              flag='test', 
+#                              size=[120,0,120], # window_size, NA, target_size
+#                              features='LD', # load disaggregation
+#                              target='OT', # NA
+#                              scale=True, # minmax scaler
+#                              timeenc=0, # NA
+#                              freq='t', # NA
+#                              percent=100, # NA, could be of use in transfer learning
+#                              max_len=-1, # NA
+#                              target_channel=1, # target index, same as before
+#                              train_all=True) # NA
+# print(min(test_dataset[0][0]))
+# print(min(test_dataset[5000][0]))
+# print(min(test_dataset[9554][0]))
+# print(test_dataset[0][0].shape, test_dataset[0][1].shape)# [window_size,1], scalar
+# print(len(test_dataset))
 
 
 
