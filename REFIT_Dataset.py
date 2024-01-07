@@ -302,8 +302,8 @@ class REFIT_Dataset(Dataset):
 
 # new version
 class Dataset_REFIT(Dataset):
-    def __init__(self, root_path, flag='train', size=None,
-                 features='LD', data_path='load_data.csv',
+    def __init__(self, data_path, flag='train', size=None,
+                 features='LD', 
                  target='OT', scale=True, timeenc=0, freq='t', 
                  percent=100, max_len=-1, target_channel=1, train_all=True):
         # size [seq_len, label_len, pred_len]
@@ -328,8 +328,6 @@ class Dataset_REFIT(Dataset):
         # self.freq = freq
         # self.percent = percent
         self.target_channel = int(target_channel) + 1
-
-        self.root_path = root_path
         self.data_path = data_path
         self.__read_data__()
         
@@ -338,8 +336,7 @@ class Dataset_REFIT(Dataset):
 
     def __read_data__(self):
         self.scaler = MinMaxScaler()
-        df_raw = pd.read_csv(os.path.join(self.root_path,
-                                          self.data_path))
+        df_raw = pd.read_csv(self.data_path)
 
         '''
         df_raw.columns: ['date', ...(other features), target feature]
@@ -445,10 +442,18 @@ class Dataset_REFIT(Dataset):
 # print(train_dataset[0][0].shape, train_dataset[0][1].shape)# [window_size,1], scalar
 # print(len(train_dataset))
 
-test_dataset = Dataset_REFIT(root_path='../REFIT/New_Data/', flag='test', size=[120,0,120],
-                 features='LD', data_path='CLEAN_House2.csv',
-                 target='OT', scale=True, timeenc=0, freq='t', 
-                 percent=100, max_len=-1, target_channel=1, train_all=True)
+test_dataset = Dataset_REFIT(data_path='../REFIT/New_Data/CLEAN_House2.csv', 
+                             flag='test', 
+                             size=[120,0,120], # window_size, NA, target_size
+                             features='LD', # load disaggregation
+                             target='OT', # NA
+                             scale=True, # minmax scaler
+                             timeenc=0, # NA
+                             freq='t', # NA
+                             percent=100, # NA, could be of use in transfer learning
+                             max_len=-1, # NA
+                             target_channel=1, # target index 
+                             train_all=True) # NA
 print(test_dataset[0])
 print(test_dataset[5000])
 print(test_dataset[9554])
