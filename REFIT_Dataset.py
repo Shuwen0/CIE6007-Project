@@ -454,9 +454,9 @@ test_dataset = Dataset_REFIT(data_path='../REFIT/New_Data/CLEAN_House2.csv',
                              max_len=-1, # NA
                              target_channel=1, # target index 
                              train_all=True) # NA
-print(test_dataset[0])
-print(test_dataset[5000])
-print(test_dataset[9554])
+print(min(test_dataset[0][0]))
+print(min(test_dataset[5000][0]))
+print(min(test_dataset[9554][0]))
 print(test_dataset[0][0].shape, test_dataset[0][1].shape)# [window_size,1], scalar
 print(len(test_dataset))
 
