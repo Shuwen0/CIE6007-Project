@@ -459,9 +459,19 @@ class Dataset_REFIT(Dataset):
 # print(min(test_dataset[9554][0]))
 # print(test_dataset[0][0].shape, test_dataset[0][1].shape)# [window_size,1], scalar
 # print(len(test_dataset))
+# for idx in range(len(test_dataset)):
+#     input = test_dataset[idx][0]
+#     label = test_dataset[idx][1]
+
+#     if min(input) < 0:
+#         print("Minimum value for input " + str(idx) + " has negative value: ")
+#         print(input)
+#     if min(label) < 0:
+#         print("Minimum value for label " + str(idx) + " has negative value: ")
+#         print(label)
+    
 
 
-# 目前只改了这一个文件，其它都没有改！！
 
 
     

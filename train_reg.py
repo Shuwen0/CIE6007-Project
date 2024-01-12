@@ -9,7 +9,7 @@ import psutil
 import argparse
 
 # files of my implementation
-from REFIT_Dataset import REFIT_Dataset
+from REFIT_Dataset import REFIT_Dataset, Dataset_REFIT
 from seq2point import Seq2point
 from seq2seqCNN import Seq2seqCNN
 from transformer import TransformerSeq2Seq, TransformerSeq2Point
@@ -25,7 +25,7 @@ This file loads an arbitrary model and train
 '''
 
 # Hyperparameters (default)
-model = 'seq2seqCNN' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch', 'seq2seqCNN']
+model = 'TransformerSeq2Seq' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch', 'seq2seqCNN']
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
@@ -149,16 +149,40 @@ print("Training on ", device, flush=True)
 
 # Dataset and DataLoader 
 # ======================================================== 'CLEAN_House' is based on REFIT dataset ===============
-train_dataset = REFIT_Dataset(data_file_path=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
-                        target_channel=appliance_channel,
-                        crop=None, 
-                        flag='train', 
-                        scale=True)
-val_dataset = REFIT_Dataset(data_file_path=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
-                        target_channel=appliance_channel,
-                        crop=None, 
-                        flag='val', 
-                        scale=True)
+# train_dataset = REFIT_Dataset(data_file_path=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+#                         target_channel=appliance_channel,
+#                         crop=None, 
+#                         flag='train', 
+#                         scale=True)
+# val_dataset = REFIT_Dataset(data_file_path=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+#                         target_channel=appliance_channel,
+#                         crop=None, 
+#                         flag='val', 
+#                         scale=True)
+train_dataset = Dataset_REFIT(data_path=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+                             flag='train', 
+                             size=[120,0,120], # window_size, NA, target_size
+                             features='LD', # load disaggregation
+                             target='OT', # NA
+                             scale=True, # minmax scaler
+                             timeenc=0, # NA
+                             freq='t', # NA
+                             percent=100, # NA, could be of use in transfer learning
+                             max_len=-1, # NA
+                             target_channel=appliance_channel, # target index, same as before
+                             train_all=True) # NA
+val_dataset = Dataset_REFIT(data_path=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+                             flag='val', 
+                             size=[120,0,120], # window_size, NA, target_size
+                             features='LD', # load disaggregation
+                             target='OT', # NA
+                             scale=True, # minmax scaler
+                             timeenc=0, # NA
+                             freq='t', # NA
+                             percent=100, # NA, could be of use in transfer learning
+                             max_len=-1, # NA
+                             target_channel=appliance_channel, # target index, same as before
+                             train_all=True) # NA
 print("The size of total training dataset is: ", len(train_dataset), flush=True)
 print("The size of validation dataset is: ", len(val_dataset))
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
@@ -203,7 +227,7 @@ def train():
             # print(inputs.shape, targets.shape)
 
             # Move tensors to the configured device
-            inputs = inputs.to(device)
+            inputs = inputs.to(device).to(torch.float)
 
             # [batch_size, 1] for seq2point
             # [batch_size, window_size] for seq2seq
@@ -212,9 +236,12 @@ def train():
             # Forward pass
             outputs = NILMmodel(inputs)
 
+
             # debug
             # print("outputs shape: ", outputs.shape)
-            loss = criterion(outputs.type(torch.DoubleTensor).to(device), targets.type(torch.DoubleTensor).to(device))
+            # loss = criterion(outputs.type(torch.DoubleTensor).to(device), targets.type(torch.DoubleTensor).to(device))
+            loss = criterion(outputs.type(torch.DoubleTensor).to(device), targets.type(torch.DoubleTensor).to(device).squeeze(2))
+
             epoch_loss += loss
             epoch_idx += 1
 
@@ -246,10 +273,11 @@ def train():
         with torch.no_grad():
             val_loss = 0.0
             for inputs, targets in val_loader:
-                inputs = inputs.to(device)
+                inputs = inputs.to(device).to(torch.float)
                 targets = targets.to(device)
                 outputs = NILMmodel(inputs)
-                loss = criterion(outputs.type(torch.DoubleTensor).to(device), targets.type(torch.DoubleTensor).to(device))
+                # loss = criterion(outputs.type(torch.DoubleTensor).to(device), targets.type(torch.DoubleTensor).to(device))
+                loss = criterion(outputs.type(torch.DoubleTensor).to(device), targets.type(torch.DoubleTensor).to(device).squeeze(2))
                 val_loss += loss.item()
 
             val_loss /= len(val_loader)
