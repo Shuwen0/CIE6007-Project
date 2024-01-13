@@ -8,7 +8,7 @@ import os
 import numpy as np
 
 # files of my implementation
-from REFIT_Dataset import REFIT_Dataset
+from REFIT_Dataset import REFIT_Dataset, Dataset_REFIT
 from seq2point import Seq2point
 from transformer import TransformerSeq2Seq, TransformerSeq2Point
 from attention_cnn import attention_cnn_Pytorch
@@ -144,11 +144,18 @@ print("Training on ", device, flush=True)
 
 # Dataset and DataLoader 
 # ======================================================== 'CLEAN_House' is based on REFIT dataset ===============
-test_dataset = REFIT_Dataset(data_file_path=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
-                        target_channel=appliance_channel,
-                        crop=None, 
-                        flag='test', 
-                        scale=True)
+test_dataset = Dataset_REFIT(data_path=os.path.join(data_dir, 'CLEAN_House' + str(building) + '.csv'), 
+                             flag='test', 
+                             size=[120,0,120], # window_size, NA, target_size
+                             features='LD', # load disaggregation
+                             target='OT', # NA
+                             scale=True, # minmax scaler
+                             timeenc=0, # NA
+                             freq='t', # NA
+                             percent=100, # NA, could be of use in transfer learning
+                             max_len=-1, # NA
+                             target_channel=appliance_channel, # target index, same as before
+                             train_all=True) # NA
 print("The size of total test dataset is: ", len(test_dataset), flush=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
 
@@ -192,8 +199,8 @@ def test():
     with torch.no_grad():
 
         for inputs, targets in test_loader:
-            inputs = inputs.to(device)
-            targets = targets.to(device)
+            inputs = inputs.to(device).to(torch.float)
+            targets = targets.to(device).squeeze(2)
             predictions = NILMmodel(inputs)
 
 
@@ -218,11 +225,16 @@ def test():
     all_predictions = np.array(all_predictions)
 
     # calculate the un-normalized version based on avergae and standard deviation
-    training_label_mean = test_dataset.label_mean
-    training_label_std = test_dataset.label_std
+    # training_label_mean = test_dataset.label_mean
+    # training_label_std = test_dataset.label_std
 
-    unnormalized_all_labels = all_labels * training_label_std + training_label_mean
-    unnormalized_all_predictions = all_predictions * training_label_std + training_label_mean
+    # unnormalized_all_labels = all_labels * training_label_std + training_label_mean
+    # unnormalized_all_predictions = all_predictions * training_label_std + training_label_mean
+    training_label_min = test_dataset.scale.min_[1]
+    training_label_scale = test_dataset.scale.scale_[1]
+
+    unnormalized_all_labels = all_labels / training_label_scale + training_label_min
+    unnormalized_all_predictions = all_predictions / training_label_scale + training_label_min
 
     # store the labels and predictions (normalized + unnormalized)
     if save_results:
