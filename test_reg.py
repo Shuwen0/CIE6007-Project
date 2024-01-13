@@ -230,8 +230,8 @@ def test():
 
     # unnormalized_all_labels = all_labels * training_label_std + training_label_mean
     # unnormalized_all_predictions = all_predictions * training_label_std + training_label_mean
-    training_label_min = test_dataset.scale.min_[1]
-    training_label_scale = test_dataset.scale.scale_[1]
+    training_label_min = test_dataset.scaler.min_[1]
+    training_label_scale = test_dataset.scaler.scale_[1]
 
     unnormalized_all_labels = all_labels / training_label_scale + training_label_min
     unnormalized_all_predictions = all_predictions / training_label_scale + training_label_min
