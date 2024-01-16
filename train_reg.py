@@ -22,10 +22,11 @@ from utils.early_stopping import EarlyStopping
 This file loads an arbitrary model and train
 -- input x: [batch_size, window_size, 1]
 -- output y: [batch_size, window_size, 1] (seq2seq) or [batch_size, 1] (seq2point)
+NOTE: to change a model, change the model name in this file & output_dir in run_train.sh
 '''
 
 # Hyperparameters (default)
-model = 'seq2seqCNN' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch', 'seq2seqCNN']
+model = 'TransformerSeq2Seq' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch', 'seq2seqCNN']
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
