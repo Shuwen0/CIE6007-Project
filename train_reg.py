@@ -208,7 +208,7 @@ criterion = torch.nn.MSELoss()
 optimizer = optim.Adam(NILMmodel.parameters(), lr=learning_rate)
 
 # Save the model parameters.
-save_path = os.path.join('models', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.pth')
+save_path = os.path.join('models', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'_standard.pth')
 
 # Initialize the early stopping object
 early_stopping = EarlyStopping(patience=3, verbose=True, path=save_path)

@@ -27,7 +27,7 @@ This file loads an arbitrary model and train
 
 # =========================================== model parameters ========================================
 # Hyperparameters (default)
-model = 'TransformerSeq2Seq' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch','seq2seqCNN']
+model = 'seq2seqCNN' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch','seq2seqCNN']
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
@@ -172,7 +172,7 @@ elif model == 'attention_cnn_Pytorch':
     NILMmodel = attention_cnn_Pytorch(window_size=window_size)
 
 # where the model weights are saved.
-save_path = os.path.join('models', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.pth')
+save_path = os.path.join('models', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'_standard.pth')
 
 # load the model weights
 NILMmodel.load_state_dict(torch.load(save_path))
@@ -239,11 +239,11 @@ def test():
     # store the labels and predictions (normalized + unnormalized)
     if save_results:
 
-        label_file = os.path.join('results','npy_file', 'normalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'.npy')
-        preds_file = os.path.join('results','npy_file', 'normalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.npy')
+        label_file = os.path.join('results','npy_file', 'normalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_standard.npy')
+        preds_file = os.path.join('results','npy_file', 'normalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'_standard.npy')
 
-        unnormalized_label_file = os.path.join('results','npy_file', 'unnormalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'.npy')
-        unnormalized_preds_file = os.path.join('results','npy_file', 'unnormalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.npy')
+        unnormalized_label_file = os.path.join('results','npy_file', 'unnormalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_standard.npy')
+        unnormalized_preds_file = os.path.join('results','npy_file', 'unnormalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'_standard.npy')
         
         np.save(label_file, np.array(all_labels))
         np.save(preds_file, np.array(all_predictions))
