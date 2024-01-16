@@ -225,16 +225,16 @@ def test():
     all_predictions = np.array(all_predictions)
 
     # calculate the un-normalized version based on avergae and standard deviation
-    # training_label_mean = test_dataset.label_mean
-    # training_label_std = test_dataset.label_std
+    training_label_mean = test_dataset.scaler.mean_[1]
+    training_label_std = test_dataset.scaler.scale_[1]
 
-    # unnormalized_all_labels = all_labels * training_label_std + training_label_mean
-    # unnormalized_all_predictions = all_predictions * training_label_std + training_label_mean
-    training_label_min = test_dataset.scaler.min_[1]
-    training_label_scale = test_dataset.scaler.scale_[1]
+    unnormalized_all_labels = all_labels * training_label_std + training_label_mean
+    unnormalized_all_predictions = all_predictions * training_label_std + training_label_mean
+    # training_label_min = test_dataset.scaler.min_[1]
+    # training_label_scale = test_dataset.scaler.scale_[1]
 
-    unnormalized_all_labels = all_labels / training_label_scale + training_label_min
-    unnormalized_all_predictions = all_predictions / training_label_scale + training_label_min
+    # unnormalized_all_labels = all_labels / training_label_scale + training_label_min
+    # unnormalized_all_predictions = all_predictions / training_label_scale + training_label_min
 
     # store the labels and predictions (normalized + unnormalized)
     if save_results:
