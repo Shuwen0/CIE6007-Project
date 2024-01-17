@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import TransformerEncoder, TransformerEncoderLayer
+from torch.nn import TransformerEncoder, TransformerEncoderLayer, TransformerDecoder, TransformerDecoderLayer
 import math
 
 from torch import nn, Tensor
@@ -14,6 +14,7 @@ from torch.nn.modules import (
     Dropout,
     BatchNorm1d,
     TransformerEncoderLayer,
+    TransformerDecoderLayer
 )
 
 '''
@@ -182,7 +183,7 @@ class TransformerSeq2Point(nn.Module):
         return output
     
 class TransformerSeq2Seq(nn.Module):
-    def __init__(self, window_size=128, d_model=512, nhead=8, num_encoder_layers=6, dim_feedforward=2048, dropout=0.1, activation='gelu'):
+    def __init__(self, window_size=128, d_model=512, nhead=8, num_encoder_layers=6, num_decoder_layers=6, dim_feedforward=2048, dropout=0.1, activation='gelu'):
         super(TransformerSeq2Seq, self).__init__()
 
         '''
@@ -206,9 +207,17 @@ class TransformerSeq2Seq(nn.Module):
         # Transformer Encoder
         encoder_layers = TransformerEncoderLayer(d_model, nhead, d_model*4, dropout)
         self.transformer_encoder = TransformerEncoder(encoder_layers, num_encoder_layers)
-        self.act = get_activation_fn(activation)
         self.dropout1 = nn.Dropout(dropout)
         self.feat_dim = 1
+
+        # ==================================== Decoder ============================================
+        # Transformer Decoder
+        decoder_layers = TransformerDecoderLayer(d_model, nhead, dim_feedforward, dropout, activation=activation)
+        self.transformer_decoder = TransformerDecoder(decoder_layers, num_decoder_layers)
+        self.decoder_input = nn.Parameter(torch.zeros(window_size, 1, d_model))  # Initial input for the decoder
+
+        # ===================================== output =========================================
+        self.act = get_activation_fn(activation)
         self.classifier = self.build_output_module(d_model=d_model, max_len=window_size, num_preds=window_size) 
     
     def build_output_module(
@@ -231,30 +240,38 @@ class TransformerSeq2Seq(nn.Module):
         # add F.log_softmax and use NLLoss
         return output_layer
 
-    def forward(self, src):
+    def forward(self, src, tgt=None):
         # src shape: [batch_size, window_size, 1]
         # Need to reshape and permute src to match the input requirement for the transformer which is (window_size, batch_size, feature_number)
         src = src.permute(1, 0, 2)
         # Pass the input through the embedding layer
-        src = self.embedding(src)
+        src = self.embedding(src) # [window_size, batch_size, d_model]
         # Add the positional encoding
         src = self.pos_encoder(src)
 
         # Pass the input through the transformer encoder
         output = self.transformer_encoder(src)
-        output = self.act(
-            output
-        )  # the output transformer encoder/decoder embeddings don't include non-linearity
+
+        # If no target is provided, use repeated decoder input
+        if tgt is None:
+            tgt = self.decoder_input.expand(-1, src.size(1), -1)  # (window_size, batch_size, d_model)
+        else:
+            tgt = tgt.unsqueeze(2) # [batch_size, window_size, 1]
+            tgt = tgt.permute(1,0,2) # [window_size, batch_size, 1]
+            tgt = self.embedding(tgt)  # Embed the target sequence # [window_size, batch_size, d_model]
+            tgt = self.pos_encoder(tgt)  # Add positional encoding
+
+        memory = output  # Encoder output to be used as memory in the decoder
+        output = self.transformer_decoder(tgt, memory)
+
+        # Map the output of the decoder to the prediction space
         output = output.permute(1, 0, 2)  # (batch_size, window_size, d_model)
-        output = self.dropout1(output)
-        output = output.reshape(
-            output.shape[0], -1
-        )  # (batch_size, window_size * d_model)
-        output = self.classifier(output) # [batch_size, window_size]  
-        # probabilities = torch.sigmoid(output) # [batch_size, window_size]  
+        output = output.reshape(output.shape[0], -1)  # (batch_size, window_size * d_model)
+        output = self.classifier(output)  # [batch_size, window_size]
 
         # return probabilities
         return output
+
 # debug
 # Example usage:
 # batch_size = 32

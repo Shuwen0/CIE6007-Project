@@ -231,11 +231,22 @@ def train():
             inputs = inputs.to(device).to(torch.float)
 
             # [batch_size, 1] for seq2point
-            # [batch_size, window_size] for seq2seq
+            # [batch_size, window_size, 1] for seq2seq
             # targets = targets.to(device) 
 
             # Forward pass
-            outputs = NILMmodel(inputs)
+            if model == 'TransformerSeq2Seq': # teacher-forcing
+                tgt = targets.to(device).to(torch.float).squeeze(2) # [batch_size, window_size]
+                start_token = 0
+                start_tokens = torch.full((targets.shape[0], 1), start_token, device=device, dtype=targets.dtype)
+                shifted_targets = torch.cat((start_tokens, tgt[:, :-1]), dim=1)  # Shape: [batch_size, seq_len]
+
+                # Forward pass with teacher forcing
+                # 'shifted_targets' is used as the second argument to the 'forward' method
+                outputs = NILMmodel(inputs, shifted_targets)
+
+            else:
+                outputs = NILMmodel(inputs)
 
 
             # debug
