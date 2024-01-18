@@ -27,7 +27,7 @@ This file loads an arbitrary model and train
 
 # =========================================== model parameters ========================================
 # Hyperparameters (default)
-model = 'TransformerSeq2Seq' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch','seq2seqCNN']
+model = 'seq2seqCNN' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch','seq2seqCNN']
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
@@ -172,7 +172,7 @@ elif model == 'attention_cnn_Pytorch':
     NILMmodel = attention_cnn_Pytorch(window_size=window_size)
 
 # where the model weights are saved.
-save_path = os.path.join('models', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'_standard.pth')
+save_path = os.path.join('models', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.pth')
 
 # load the model weights
 NILMmodel.load_state_dict(torch.load(save_path))
