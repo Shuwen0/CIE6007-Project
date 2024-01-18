@@ -225,25 +225,25 @@ def test():
     all_predictions = np.array(all_predictions)
 
     # calculate the un-normalized version based on avergae and standard deviation
-    training_label_mean = test_dataset.scaler.mean_[1]
-    training_label_std = test_dataset.scaler.scale_[1]
+    # training_label_mean = test_dataset.scaler.mean_[1]
+    # training_label_std = test_dataset.scaler.scale_[1]
 
-    unnormalized_all_labels = all_labels * training_label_std + training_label_mean
-    unnormalized_all_predictions = all_predictions * training_label_std + training_label_mean
-    # training_label_min = test_dataset.scaler.min_[1]
-    # training_label_scale = test_dataset.scaler.scale_[1]
+    # unnormalized_all_labels = all_labels * training_label_std + training_label_mean
+    # unnormalized_all_predictions = all_predictions * training_label_std + training_label_mean
+    training_label_min = test_dataset.scaler.min_[1]
+    training_label_scale = test_dataset.scaler.scale_[1]
 
-    # unnormalized_all_labels = all_labels / training_label_scale + training_label_min
-    # unnormalized_all_predictions = all_predictions / training_label_scale + training_label_min
+    unnormalized_all_labels = all_labels * training_label_scale + training_label_min
+    unnormalized_all_predictions = all_predictions * training_label_scale + training_label_min
 
     # store the labels and predictions (normalized + unnormalized)
     if save_results:
 
-        label_file = os.path.join('results','npy_file', 'normalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_standard.npy')
-        preds_file = os.path.join('results','npy_file', 'normalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'_standard.npy')
+        label_file = os.path.join('results','npy_file', 'normalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'.npy')
+        preds_file = os.path.join('results','npy_file', 'normalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.npy')
 
-        unnormalized_label_file = os.path.join('results','npy_file', 'unnormalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_standard.npy')
-        unnormalized_preds_file = os.path.join('results','npy_file', 'unnormalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'_standard.npy')
+        unnormalized_label_file = os.path.join('results','npy_file', 'unnormalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'.npy')
+        unnormalized_preds_file = os.path.join('results','npy_file', 'unnormalized', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.npy')
         
         np.save(label_file, np.array(all_labels))
         np.save(preds_file, np.array(all_predictions))

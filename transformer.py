@@ -252,11 +252,11 @@ class TransformerSeq2Seq(nn.Module):
             output.shape[0], -1
         )  # (batch_size, window_size * d_model)
         output = self.classifier(output) # [batch_size, window_size]  
+        # probabilities = torch.sigmoid(output) # [batch_size, window_size]  
 
-
-        # return predictions
+        # return probabilities
         return output
-    
+        
 class TransformerSeq2Seq_DE(nn.Module):
     def __init__(self, window_size=128, d_model=512, nhead=8, num_encoder_layers=6, num_decoder_layers=6, dim_feedforward=2048, dropout=0.1, activation='gelu'):
         super(TransformerSeq2Seq_DE, self).__init__()
