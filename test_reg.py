@@ -27,7 +27,7 @@ This file loads an arbitrary model and train
 
 # =========================================== model parameters ========================================
 # Hyperparameters (default)
-model = 'seq2seqCNN' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch','seq2seqCNN']
+model = 'TransformerSeq2Seq' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch','seq2seqCNN']
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
@@ -192,6 +192,7 @@ def test():
     # test_mse = 0.0
     # num_batches = 0
 
+    # all_inputs = []
     all_labels = []
     all_predictions = []
 
@@ -217,6 +218,7 @@ def test():
 
 
             # Convert to lists and append to all_labels and all_predictions
+            # all_inputs.extend(inputs.squeeze(2).cpu().numpy().tolist())
             all_labels.extend(targets.cpu().numpy().tolist())
             all_predictions.extend(predictions.cpu().numpy().tolist())
 
@@ -225,16 +227,21 @@ def test():
     all_predictions = np.array(all_predictions)
 
     # calculate the un-normalized version based on avergae and standard deviation
+
+    # =================================== z-score ==============================
     # training_label_mean = test_dataset.scaler.mean_[1]
-    # training_label_std = test_dataset.scaler.scale_[1]
+    # training_label_std = test_dataset.scaler.std_[1]
 
     # unnormalized_all_labels = all_labels * training_label_std + training_label_mean
     # unnormalized_all_predictions = all_predictions * training_label_std + training_label_mean
-    training_label_min = test_dataset.scaler.min_[1]
-    training_label_scale = test_dataset.scaler.scale_[1]
 
-    unnormalized_all_labels = all_labels * training_label_scale + training_label_min
-    unnormalized_all_predictions = all_predictions * training_label_scale + training_label_min
+
+    # =================================== minmax ==================================== 
+    training_label_min = test_dataset.scaler.min_[1]
+    training_label_scale = test_dataset.scaler.scale_[1] # scale = (max - min) / (X.max(axis=0) - X.min(axis=0)) < 0！！
+
+    unnormalized_all_labels = all_labels / training_label_scale + training_label_min
+    unnormalized_all_predictions = all_predictions / training_label_scale + training_label_min
 
     # store the labels and predictions (normalized + unnormalized)
     if save_results:
