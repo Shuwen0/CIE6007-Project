@@ -335,8 +335,8 @@ class Dataset_REFIT(Dataset):
         self.tot_len = len(self.data_x) - self.seq_len + 1
 
     def __read_data__(self):
-        self.scaler = MinMaxScaler()
-        # self.scaler = StandardScaler()
+        # self.scaler = MinMaxScaler()
+        self.scaler = StandardScaler()
         df_raw = pd.read_csv(self.data_path)
 
         '''
