@@ -183,8 +183,83 @@ class TransformerSeq2Point(nn.Module):
         return output
     
 class TransformerSeq2Seq(nn.Module):
-    def __init__(self, window_size=128, d_model=512, nhead=8, num_encoder_layers=6, num_decoder_layers=6, dim_feedforward=2048, dropout=0.1, activation='gelu'):
+    def __init__(self, window_size=128, d_model=512, nhead=8, num_encoder_layers=6, dim_feedforward=2048, dropout=0.1, activation='gelu'):
         super(TransformerSeq2Seq, self).__init__()
+
+        '''
+        :param window_size: the length of input sequence (aggregate power)
+        :param d_model: d_k = d_v = d_model/n_head, default is 512
+        :param nhad: numher of heads in multi-head attention, default is 8
+        :param num_encoder_layers: number of encoder layers, default is 6
+        :param num_decoder_layers: number of decoder layers, default is 6
+        :param dim_feedforward: dimension of fully-connected layerm default is 2048
+        :param dropout: dropout rate, default is 0.1
+        '''
+
+        # =================================== PE + TE (没检查)============================================
+        self.d_model = d_model
+        # Embedding layer that projects the input to d_model dimensions
+        self.embedding = TokenEmbedding(window_size, d_model)
+        # Positional Encoding layer
+        self.pos_encoder = PositionalEncoding(window_size, d_model, dropout)
+
+        # ==================================== Encoder ============================================
+        # Transformer Encoder
+        encoder_layers = TransformerEncoderLayer(d_model, nhead, d_model*4, dropout)
+        self.transformer_encoder = TransformerEncoder(encoder_layers, num_encoder_layers)
+        self.act = get_activation_fn(activation)
+        self.dropout1 = nn.Dropout(dropout)
+        self.feat_dim = 1
+        self.classifier = self.build_output_module(d_model=d_model, max_len=window_size, num_preds=window_size) 
+    
+    def build_output_module(
+        self, d_model: int, max_len: int, num_preds: int
+    ) -> nn.Module:
+        """ Build linear layer that maps from d_model*max_len to num_classes.
+
+        Softmax not included here as it is computed in the loss function.
+
+        Args:
+            d_model: the embed dim
+            max_len: maximum length of the input sequence
+            num_preds: the number of predictions (binary classification)
+
+        Returns:
+            output_layer: Tensor of shape (batch_size, num_classes)
+        """
+        output_layer = nn.Linear(d_model * max_len, num_preds)
+        # no softmax (or log softmax), because CrossEntropyLoss does this internally. If probabilities are needed,
+        # add F.log_softmax and use NLLoss
+        return output_layer
+
+    def forward(self, src):
+        # src shape: [batch_size, window_size, 1]
+        # Need to reshape and permute src to match the input requirement for the transformer which is (window_size, batch_size, feature_number)
+        src = src.permute(1, 0, 2)
+        # Pass the input through the embedding layer
+        src = self.embedding(src)
+        # Add the positional encoding
+        src = self.pos_encoder(src)
+
+        # Pass the input through the transformer encoder
+        output = self.transformer_encoder(src)
+        output = self.act(
+            output
+        )  # the output transformer encoder/decoder embeddings don't include non-linearity
+        output = output.permute(1, 0, 2)  # (batch_size, window_size, d_model)
+        output = self.dropout1(output)
+        output = output.reshape(
+            output.shape[0], -1
+        )  # (batch_size, window_size * d_model)
+        output = self.classifier(output) # [batch_size, window_size]  
+
+
+        # return predictions
+        return output
+    
+class TransformerSeq2Seq_DE(nn.Module):
+    def __init__(self, window_size=128, d_model=512, nhead=8, num_encoder_layers=6, num_decoder_layers=6, dim_feedforward=2048, dropout=0.1, activation='gelu'):
+        super(TransformerSeq2Seq_DE, self).__init__()
 
         '''
         :param window_size: the length of input sequence (aggregate power)
