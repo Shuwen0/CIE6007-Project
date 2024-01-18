@@ -26,7 +26,7 @@ NOTE: to change a model, change the model name in this file & output_dir in run_
 '''
 
 # Hyperparameters (default)
-model = 'TransformerSeq2Seq' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch', 'seq2seqCNN']
+model = 'seq2seqCNN' # ['s2p', 'TransformerSeq2Seq', 'TransformerSeq2Point', 'attention_cnn_Pytorch', 'seq2seqCNN']
 batch_size = params_model[model]['batch_size'] # [1000, 128]
 learning_rate = params_model[model]['lr'] # [1e-3, 1e-4]
 num_epochs = params_model[model]['num_epochs'] # [10, 100]
@@ -72,8 +72,8 @@ def str2bool(v):
 
 params_dataset = {
     'REFIT':{
-        2:{'kettle':8, 'microwave':5, 'fridge':1, 'dishwasher':10, 'washingmachine':2},
-        3:{'kettle':9, 'microwave':8, 'fridge':2, 'dishwasher':10, 'washingmachine':6},
+        2:{'kettle':8, 'microwave':5, 'fridge':1, 'dishwasher':3, 'washingmachine':2},
+        3:{'kettle':9, 'microwave':8, 'fridge':2, 'dishwasher':5, 'washingmachine':6},
         5:{'kettle':8, 'microwave':7, 'fridge':1, 'dishwasher':4, 'washingmachine':3}
     }
 }
@@ -209,7 +209,7 @@ criterion = torch.nn.MSELoss()
 optimizer = optim.Adam(NILMmodel.parameters(), lr=learning_rate)
 
 # Save the model parameters.
-save_path = os.path.join('models', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'_standard.pth')
+save_path = os.path.join('models', dataset_name+'_B'+str(building)+'_'+appliance_name+'_'+model+'.pth')
 
 # Initialize the early stopping object
 early_stopping = EarlyStopping(patience=3, verbose=True, path=save_path)
@@ -218,6 +218,7 @@ early_stopping = EarlyStopping(patience=3, verbose=True, path=save_path)
 memory_flag = 0
 def train():
     NILMmodel.train()
+    print("Number of batches:", len(train_loader))
     for epoch in range(num_epochs):
         epoch_loss = 0
         epoch_idx = 0
@@ -235,7 +236,7 @@ def train():
             # targets = targets.to(device) 
 
             # Forward pass
-            if model == 'TransformerSeq2Seq': # teacher-forcing
+            if model == 'TransformerSeq2Seq-DE': # teacher-forcing
                 tgt = targets.to(device).to(torch.float).squeeze(2) # [batch_size, window_size]
                 start_token = 0
                 start_tokens = torch.full((targets.shape[0], 1), start_token, device=device, dtype=targets.dtype)
